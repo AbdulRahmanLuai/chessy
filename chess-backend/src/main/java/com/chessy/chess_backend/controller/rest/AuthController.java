@@ -51,35 +51,50 @@ public class AuthController {
         if (userRepository.existsByEmail(req.getEmail())) {
             return ResponseEntity.badRequest().body("Email already in use");
         }
+        if (userRepository.existsByUsername(req.getUsername())) {
+            return ResponseEntity.badRequest().body("Username already in use");
+        }
+
         User user = User.builder()
                 .email(req.getEmail())
                 .passwordHash(passwordEncoder.encode(req.getPassword()))
                 .displayName(req.getDisplayName())
+                .username(req.getUsername())
                 .build();
+
+
         userRepository.save(user);
 
-        String accessToken = jwtUtil.generateToken(user.getId(), user.getEmail());
+        String accessToken = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getUsername());
         String refreshTokenRaw = refreshTokenService.generateRefreshToken(user.getId());
         addRefreshCookie(response, refreshTokenRaw);
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new AuthResponse(accessToken, user.getId().toString(), user.getEmail(), user.getDisplayName()));
+                .body(new AuthResponse(accessToken, user.getId().toString(), user.getEmail(), user.getDisplayName(), user.getUsername()));
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req,
                                    HttpServletResponse response) {
-        User user = userRepository.findByEmail(req.getEmail()).orElse(null);
+
+        String login = req.getLogin().trim();
+        User user;
+        if (login.contains("@")) {
+            user = userRepository.findByEmail(login).orElse(null);
+        } else {
+            user = userRepository.findByUsername(login).orElse(null);
+        }
+
         if (user == null || user.getPasswordHash() == null ||
                 !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
         }
-        String accessToken = jwtUtil.generateToken(user.getId(), user.getEmail());
+        String accessToken = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getUsername());
         String refreshTokenRaw = refreshTokenService.generateRefreshToken(user.getId());
         addRefreshCookie(response, refreshTokenRaw);
 
         return ResponseEntity.ok(
-                new AuthResponse(accessToken, user.getId().toString(), user.getEmail(), user.getDisplayName()));
+                new AuthResponse(accessToken, user.getId().toString(), user.getEmail(), user.getDisplayName(), user.getUsername()));
     }
 
     @PostMapping("/refresh")
@@ -105,11 +120,11 @@ public class AuthController {
         }
 
         User user = userRepository.findById(result.userId()).orElseThrow();
-        String newAccessToken = jwtUtil.generateToken(user.getId(), user.getEmail());
+        String newAccessToken = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getUsername());
         addRefreshCookie(response, result.newRawToken());
 
         return ResponseEntity.ok(
-                new AuthResponse(newAccessToken, user.getId().toString(), user.getEmail(), user.getDisplayName()));
+                new AuthResponse(newAccessToken, user.getId().toString(), user.getEmail(), user.getDisplayName(), user.getUsername()));
     }
 
     private void addRefreshCookie(HttpServletResponse response, String rawToken) {
