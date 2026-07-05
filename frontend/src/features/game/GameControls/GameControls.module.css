@@ -1,0 +1,29 @@
+/* GameControls.module.css */
+
+/* ─── Root ───────────────────────────────────────────────────────────────────── */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+/* ─── Flip button ─────────────────────────────────────────────────────────────── */
+
+/* Flip sits above the divider and is visually lighter than the action buttons */
+.flipBtn {
+  align-self: flex-end;
+  /* Smaller than fullWidth actions — it's a utility, not a primary action */
+}
+
+/* ─── Divider ─────────────────────────────────────────────────────────────────── */
+
+.divider {
+  height: 1px;
+  background-color: var(--color-border);
+  margin: var(--space-1) 0;
+}

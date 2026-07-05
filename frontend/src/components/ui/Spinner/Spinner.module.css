@@ -1,0 +1,77 @@
+/* Spinner.module.css */
+
+/* ─── Base ───────────────────────────────────────────────────────────────────── */
+
+.spinner {
+  display: inline-block;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  border-style: solid;
+  /* The track is always a dimmed version of the active color,
+     set per-color variant below using currentColor */
+  animation: spin 650ms linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ─── Sizes ──────────────────────────────────────────────────────────────────── */
+
+.sm {
+  width:  16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.md {
+  width:  24px;
+  height: 24px;
+  border-width: 2.5px;
+}
+
+.lg {
+  width:  36px;
+  height: 36px;
+  border-width: 3px;
+}
+
+.xl {
+  width:  52px;
+  height: 52px;
+  border-width: 4px;
+}
+
+/* ─── Colors ─────────────────────────────────────────────────────────────────── */
+
+/* Accent — gold ring, used on dark backgrounds */
+.accent {
+  border-color: var(--color-accent-muted);
+  border-top-color: var(--color-accent);
+}
+
+/* Current — inherits whatever color the parent sets, useful inside buttons */
+.current {
+  border-color: color-mix(in srgb, currentColor 20%, transparent);
+  border-top-color: currentColor;
+}
+
+/* Muted — low-key version for skeleton/placeholder contexts */
+.muted {
+  border-color: var(--color-border);
+  border-top-color: var(--color-border-strong);
+}
+
+/* ─── Reduced Motion ─────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+}

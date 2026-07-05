@@ -1,0 +1,110 @@
+/* Avatar.module.css */
+
+/* ─── Container ──────────────────────────────────────────────────────────────── */
+
+.container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  background-color: var(--color-bg-raised);
+  overflow: hidden;
+  /* Smooth bg-color transition for initials fallback */
+  transition: box-shadow var(--duration-normal);
+  /* Prevent layout bleed from inline context */
+  vertical-align: middle;
+}
+
+/* ─── Ring ───────────────────────────────────────────────────────────────────── */
+
+.ring {
+  box-shadow: 0 0 0 2px var(--color-bg-base), 0 0 0 4px var(--color-accent);
+}
+
+/* ─── Sizes ──────────────────────────────────────────────────────────────────── */
+
+.xs {
+  width:  24px;
+  height: 24px;
+}
+
+.sm {
+  width:  32px;
+  height: 32px;
+}
+
+.md {
+  width:  40px;
+  height: 40px;
+}
+
+.lg {
+  width:  56px;
+  height: 56px;
+}
+
+.xl {
+  width:  80px;
+  height: 80px;
+}
+
+/* ─── Image ──────────────────────────────────────────────────────────────────── */
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-full);
+}
+
+/* ─── Initials ───────────────────────────────────────────────────────────────── */
+
+.initials {
+  font-family: var(--font-body);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  line-height: 1;
+  /* Scale text relative to the container — set per size below */
+  font-size: var(--avatar-font-size);
+  letter-spacing: 0.02em;
+}
+
+.xs  { --avatar-font-size: 9px; }
+.sm  { --avatar-font-size: 11px; }
+.md  { --avatar-font-size: 14px; }
+.lg  { --avatar-font-size: 20px; }
+.xl  { --avatar-font-size: 28px; }
+
+/* ─── Fallback Icon ──────────────────────────────────────────────────────────── */
+
+.fallbackIcon {
+  color: var(--color-text-muted);
+}
+
+/* ─── Status Dot ─────────────────────────────────────────────────────────────── */
+
+.statusDot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  border-radius: var(--radius-full);
+  /* Ring around the dot separates it cleanly from the avatar edge */
+  box-shadow: 0 0 0 2px var(--color-bg-base);
+}
+
+/* Dot size scales with avatar size using the same scoped variable trick */
+.xs  .statusDot { width: 6px;  height: 6px; }
+.sm  .statusDot { width: 8px;  height: 8px; }
+.md  .statusDot { width: 10px; height: 10px; }
+.lg  .statusDot { width: 12px; height: 12px; }
+.xl  .statusDot { width: 14px; height: 14px; }
+
+.online {
+  background-color: var(--color-online);
+}
+
+.offline {
+  background-color: var(--color-offline);
+}

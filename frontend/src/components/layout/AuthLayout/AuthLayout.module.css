@@ -1,0 +1,183 @@
+/* AuthLayout.module.css */
+
+/* ─── Root ───────────────────────────────────────────────────────────────────── */
+
+.root {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-bg-base);
+  padding: var(--space-6);
+  overflow: hidden;
+}
+
+/* ─── Background: subtle chess board grid ─────────────────────────────────────
+   A repeating 2×2 checkerboard made from two near-invisible squares.
+   It gives depth without competing with the card.                               */
+
+.bgPattern {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(
+      45deg,
+      rgba(201, 168, 76, 0.03) 25%,   /* --color-accent at 3% opacity */
+      transparent 25%
+    ),
+    linear-gradient(
+      -45deg,
+      rgba(201, 168, 76, 0.03) 25%,
+      transparent 25%
+    ),
+    linear-gradient(
+      45deg,
+      transparent 75%,
+      rgba(201, 168, 76, 0.03) 75%
+    ),
+    linear-gradient(
+      -45deg,
+      transparent 75%,
+      rgba(201, 168, 76, 0.03) 75%
+    );
+  background-size: 48px 48px;
+  background-position: 0 0, 0 24px, 24px -24px, -24px 0;
+  /* Radial vignette so the pattern fades out toward the edges */
+  -webkit-mask-image: radial-gradient(
+    ellipse 70% 70% at 50% 50%,
+    black 30%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 70% 70% at 50% 50%,
+    black 30%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* ─── Inner column ───────────────────────────────────────────────────────────── */
+
+.inner {
+  position: relative;  /* sit above bgPattern */
+  z-index: var(--z-raised);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  width: 100%;
+  max-width: 440px;
+}
+
+/* ─── Logo ───────────────────────────────────────────────────────────────────── */
+
+.logoLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
+  transition: opacity var(--duration-fast);
+}
+
+.logoLink:hover {
+  opacity: 0.8;
+}
+
+.logoLink:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
+}
+
+.logoIcon {
+  font-size: 28px;
+  line-height: 1;
+  /* The pawn glyph inherits the accent color */
+  color: var(--color-accent);
+  /* Optical correction — the chess glyph sits slightly low */
+  position: relative;
+  top: -1px;
+}
+
+.logoText {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+}
+
+/* ─── Card ───────────────────────────────────────────────────────────────────── */
+
+.card {
+  width: 100%;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+/* ─── Card Header ────────────────────────────────────────────────────────────── */
+
+.cardHeader {
+  padding: var(--space-6) var(--space-6) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.title {
+  font-family: var(--font-body);
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  line-height: var(--leading-tight);
+}
+
+.subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-normal);
+}
+
+/* ─── Card Body ──────────────────────────────────────────────────────────────── */
+
+.cardBody {
+  padding: var(--space-6);
+}
+
+/* ─── Footer ─────────────────────────────────────────────────────────────────── */
+
+.footer {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  text-align: center;
+  /* Links inside footer inherit accent */
+}
+
+.footer a {
+  color: var(--color-accent);
+  font-weight: var(--font-medium);
+  text-decoration: none;
+  transition: color var(--duration-fast);
+}
+
+.footer a:hover {
+  color: var(--color-accent-hover);
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .root {
+    padding: var(--space-4);
+    align-items: flex-start;
+    padding-top: var(--space-12);
+  }
+
+  .inner {
+    gap: var(--space-5);
+  }
+}

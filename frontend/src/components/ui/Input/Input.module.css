@@ -1,0 +1,184 @@
+/* Input.module.css */
+
+/* ─── Wrapper ────────────────────────────────────────────────────────────────── */
+
+.wrapper {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.fullWidth .inputRow {
+  width: 100%;
+}
+
+/* ─── Label ──────────────────────────────────────────────────────────────────── */
+
+.label {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-tight);
+}
+
+/* ─── Input Row (holds input + icons) ───────────────────────────────────────── */
+
+.inputRow {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ─── Field ──────────────────────────────────────────────────────────────────── */
+
+.field {
+  width: 100%;
+  font-family: var(--font-body);
+  font-weight: var(--font-normal);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition:
+    border-color var(--duration-fast),
+    box-shadow var(--duration-fast),
+    background-color var(--duration-fast);
+  outline: none;
+  appearance: none;
+}
+
+.field::placeholder {
+  color: var(--color-text-muted);
+}
+
+.field:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+}
+
+.field:focus:not(:disabled) {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-muted);
+}
+
+/* ─── Sizes ──────────────────────────────────────────────────────────────────── */
+
+.sm {
+  height: 32px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+  border-radius: var(--radius-sm);
+}
+
+.md {
+  height: 40px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.lg {
+  height: 48px;
+  padding: 0 var(--space-4);
+  font-size: var(--text-base);
+}
+
+/* ─── Status: Error ──────────────────────────────────────────────────────────── */
+
+.error {
+  border-color: var(--color-danger);
+}
+
+.error:hover:not(:disabled) {
+  border-color: var(--color-danger);
+}
+
+.error:focus:not(:disabled) {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px var(--color-danger-muted);
+}
+
+/* ─── Status: Success ────────────────────────────────────────────────────────── */
+
+.success {
+  border-color: var(--color-success);
+}
+
+.success:hover:not(:disabled) {
+  border-color: var(--color-success);
+}
+
+.success:focus:not(:disabled) {
+  border-color: var(--color-success);
+  box-shadow: 0 0 0 3px var(--color-success-muted);
+}
+
+/* ─── Disabled ───────────────────────────────────────────────────────────────── */
+
+.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background-color: var(--color-bg-raised);
+}
+
+/* ─── Icons ──────────────────────────────────────────────────────────────────── */
+
+.iconLeft,
+.iconRight {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-muted);
+  pointer-events: none;
+  /* Transition so icon color follows field focus */
+  transition: color var(--duration-fast);
+}
+
+.iconLeft {
+  left: var(--space-3);
+}
+
+.iconRight {
+  right: var(--space-3);
+}
+
+/* Indent the field text so it doesn't overlap the icons */
+.hasIconLeft {
+  padding-left: var(--space-8);
+}
+
+.hasIconRight {
+  padding-right: var(--space-8);
+}
+
+/* Icon inherits accent color when field is focused */
+.inputRow:focus-within .iconLeft,
+.inputRow:focus-within .iconRight {
+  color: var(--color-accent);
+}
+
+/* ─── Hint & Error Text ──────────────────────────────────────────────────────── */
+
+.hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: var(--leading-normal);
+}
+
+.error-msg {
+  font-size: var(--text-xs);
+  color: var(--color-danger);
+  line-height: var(--leading-normal);
+}
+
+/* The error span uses role="alert" — style it the same way */
+span[role='alert'] {
+  font-size: var(--text-xs);
+  color: var(--color-danger);
+  line-height: var(--leading-normal);
+}

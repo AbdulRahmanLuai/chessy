@@ -1,0 +1,176 @@
+import { useState, useEffect, useCallback } from 'react';
+import { useGameStore } from '@/store/gameStore';
+import { useAuthStore } from '@/store/authStore';
+import { gameSocketService } from '@/socket/gameSocketService';
+import { gameService } from '@/services/game.service';
+
+import type {
+  Square,
+  PieceSymbol,
+  Color,
+  Game,
+} from '@/types';
+
+// ─── Hook return type ─────────────────────────────────────────────────────────
+
+interface UseGameReturn {
+  handleMoveAttempt: (from: Square, to: Square, promotion?: PieceSymbol) => boolean;
+  handleResign:      () => void;
+  handleOfferDraw:   () => void;
+  handleAbort:       () => void;
+  handleAcceptDraw:  () => void;
+  handleDeclineDraw: () => void;
+  drawOfferReceived: boolean;
+  drawOfferSent:     boolean;
+}
+
+// ─── Hook ─────────────────────────────────────────────────────────────────────
+
+export function useGame(gameId: string): UseGameReturn {
+  const setGame     = useGameStore((s) => s.setGame);
+  const setLoading  = useGameStore((s) => s.setLoading);
+  const applyMove   = useGameStore((s) => s.applyMove);
+  const setResult   = useGameStore((s) => s.setResult);
+
+  const game        = useGameStore((s) => s.game);
+  const currentUser = useAuthStore((s) => s.user);
+
+  const [drawOfferReceived, setDrawOfferReceived] = useState(false);
+  const [drawOfferSent, setDrawOfferSent] = useState(false);
+
+  // ─── Load + join game ──────────────────────────────────────────────────────
+
+  useEffect(() => {
+    
+    if (!currentUser) return;
+
+    setLoading(true);
+
+    const loadGame = async () => {
+      const game = await gameService.getGame(gameId);
+      setGame(game);
+    };
+    loadGame();
+
+    gameSocketService.join(gameId);
+    setLoading(false);
+
+    return () => {
+      gameSocketService.leave(gameId);
+      setGame(null);
+      setDrawOfferReceived(false);
+      setDrawOfferSent(false);
+    };
+  }, [gameId, currentUser]);
+
+  // ─── Socket event listeners ────────────────────────────────────────────────
+
+  useEffect(() => {
+    const socket = require('@/socket/socket').getSocket();
+
+    if (!socket) return;
+
+    // move applied from server (authoritative)
+    const onMoveApplied = (payload: any) => {
+      applyMove(
+        payload.move,
+        payload.fen,
+        payload.whiteTimeRemainingMs,
+        payload.blackTimeRemainingMs,
+      );
+    };
+
+    const onDrawOffered = () => {
+      setDrawOfferReceived(true);
+    };
+
+    const onDrawAccepted = () => {
+      setDrawOfferSent(false);
+      setDrawOfferReceived(false);
+    };
+
+    const onDrawDeclined = () => {
+      setDrawOfferSent(false);
+      setDrawOfferReceived(false);
+    };
+
+    const onGameEnded = (payload: any) => {
+      setResult('COMPLETED', payload.result, payload.reason);
+    };
+
+    socket.on('game:moveApplied', onMoveApplied);
+    socket.on('game:drawOffered', onDrawOffered);
+    socket.on('game:drawAccepted', onDrawAccepted);
+    socket.on('game:drawDeclined', onDrawDeclined);
+    socket.on('game:ended', onGameEnded);
+
+    return () => {
+      socket.off('game:moveApplied', onMoveApplied);
+      socket.off('game:drawOffered', onDrawOffered);
+      socket.off('game:drawAccepted', onDrawAccepted);
+      socket.off('game:drawDeclined', onDrawDeclined);
+      socket.off('game:ended', onGameEnded);
+    };
+  }, [applyMove, setResult]);
+
+  // ─── Helpers ───────────────────────────────────────────────────────────────
+
+  const myColor: Color = (() => {
+    if (!game || !currentUser) return 'white';
+    return game.whitePlayer.id === currentUser.id ? 'white' : 'black';
+  })();
+
+  // ─── Actions → server ──────────────────────────────────────────────────────
+
+  const handleMoveAttempt = useCallback(
+    (from: Square, to: Square, promotion?: PieceSymbol): boolean => {
+      if (!game) return false;
+
+      gameSocketService.move({
+        gameId,
+        from,
+        to,
+        promotion,
+      });
+
+      return true;
+    },
+    [gameId, game],
+  );
+
+  const handleResign = useCallback(() => {
+    gameSocketService.resign(gameId);
+  }, [gameId]);
+
+  const handleOfferDraw = useCallback(() => {
+    setDrawOfferSent(true);
+    gameSocketService.offerDraw(gameId);
+  }, [gameId]);
+
+  const handleAbort = useCallback(() => {
+    gameSocketService.abort(gameId);
+  }, [gameId]);
+
+  const handleAcceptDraw = useCallback(() => {
+    setDrawOfferReceived(false);
+    gameSocketService.acceptDraw(gameId);
+  }, [gameId]);
+
+  const handleDeclineDraw = useCallback(() => {
+    setDrawOfferReceived(false);
+    gameSocketService.declineDraw(gameId);
+  }, [gameId]);
+
+  // ─── Return ────────────────────────────────────────────────────────────────
+
+  return {
+    handleMoveAttempt,
+    handleResign,
+    handleOfferDraw,
+    handleAbort,
+    handleAcceptDraw,
+    handleDeclineDraw,
+    drawOfferReceived,
+    drawOfferSent,
+  };
+}

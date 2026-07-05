@@ -1,0 +1,107 @@
+/* Clock.module.css */
+
+/* ─── Base ───────────────────────────────────────────────────────────────────── */
+
+.clock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-raised);
+  min-width: 96px;
+  transition:
+    background-color var(--duration-normal),
+    border-color     var(--duration-normal),
+    box-shadow       var(--duration-normal);
+}
+
+/* ─── Time Display ───────────────────────────────────────────────────────────── */
+
+.display {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-medium);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--color-text-primary);
+  /* Tabular nums prevent the display from shifting width as digits change */
+  font-variant-numeric: tabular-nums;
+  transition: color var(--duration-normal);
+}
+
+/* ─── State: Idle (opponent's turn) ─────────────────────────────────────────── */
+
+.idle {
+  background-color: var(--color-bg-surface);
+  border-color: var(--color-border);
+}
+
+.idle .display {
+  color: var(--color-text-muted);
+}
+
+/* ─── State: Active (player's turn, clock running) ──────────────────────────── */
+
+.active {
+  background-color: var(--color-bg-raised);
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.active .display {
+  color: var(--color-text-primary);
+}
+
+/* ─── State: Low time (≤ 30s) ───────────────────────────────────────────────── */
+
+.low {
+  background-color: var(--color-warning-muted);
+  border-color: var(--color-warning);
+}
+
+.low .display {
+  color: var(--color-warning);
+}
+
+/* ─── State: Critical time (≤ 10s) ──────────────────────────────────────────── */
+
+.crit {
+  background-color: var(--color-danger-muted);
+  border-color: var(--color-danger);
+  /* Subtle pulse to draw attention without being annoying */
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.crit .display {
+  color: var(--color-danger);
+  font-weight: var(--font-bold);
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(192, 57, 43, 0); }
+  50%       { box-shadow: 0 0 0 4px rgba(192, 57, 43, 0.2); }
+}
+
+/* ─── State: Out of time ─────────────────────────────────────────────────────── */
+
+.out {
+  background-color: var(--color-danger-muted);
+  border-color: var(--color-danger);
+  animation: none;
+}
+
+.out .display {
+  color: var(--color-danger);
+}
+
+/* ─── Reduced Motion ─────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .crit {
+    animation: none;
+    /* Static glow instead of pulse */
+    box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.25);
+  }
+}
