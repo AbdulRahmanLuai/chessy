@@ -1,6 +1,6 @@
 package com.chessy.chess_backend.converter;
 
-import com.chessy.chess_backend.dto.Move;
+import com.chessy.chess_backend.model.Move;
 import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;

@@ -3,13 +3,16 @@ package com.chessy.chess_backend.entity;
 
 import com.chessy.chess_backend.converter.MoveListConverter;
 
-import com.chessy.chess_backend.dto.Move;
+import com.chessy.chess_backend.model.Move;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "games")
@@ -38,10 +41,12 @@ public class Game {
     @Column(name = "current_fen", nullable = false)
     private String currentFen;
 
-    @Column(name = "moves", columnDefinition = "jsonb not null default '[]'")
-    @Convert(converter = MoveListConverter.class)
-    private List<Move> moves = new ArrayList<>();
 
+
+    @Column(name = "moves", columnDefinition = "jsonb")
+    @Convert(converter = MoveListConverter.class)
+    @JdbcTypeCode(SqlTypes.JSON)
+    private List<Move> moves = new ArrayList<>();
     private String result;
 
     @Column(name = "result_reason", length = 30)

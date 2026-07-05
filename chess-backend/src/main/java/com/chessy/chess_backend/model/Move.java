@@ -1,4 +1,4 @@
-package com.chessy.chess_backend.dto;
+package com.chessy.chess_backend.model;
 
 import lombok.Data;
 import lombok.AllArgsConstructor;
