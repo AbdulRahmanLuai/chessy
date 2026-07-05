@@ -86,5 +86,12 @@ public class RefreshTokenService {
         }
     }
 
+    @Transactional
+    public void invalidateToken(String rawToken) {
+        String tokenHash = hashToken(rawToken);
+        refreshTokenRepository.findByTokenHash(tokenHash)
+                .ifPresent(refreshTokenRepository::delete);
+    }
+
     public record RefreshTokenResult(String newRawToken, UUID userId) {}
 }

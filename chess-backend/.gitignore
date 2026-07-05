@@ -40,6 +40,8 @@ application.properties
 application-local.properties
 application-local.yml
 *.log
+*.log.gz
+
 
 # Keep the template tracked
 !application.properties.template

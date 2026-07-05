@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- ── Console appender (keep for live dev feedback) ──────────────────── -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!--
+        ── Rolling file appender ──────────────────────────────────────────────
+        • Writes to  logs/app.log
+        • Rolls daily AND when the file exceeds 20 MB
+        • Keeps 30 days / 500 MB worth of history
+        • Change LOG_DIR if you want a different folder
+    -->
+    <property name="LOG_DIR" value="logs" />
+
+    <appender name="ROLLING_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/app.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- archived files will be named  logs/app.2025-07-01.0.log.gz  etc. -->
+            <fileNamePattern>${LOG_DIR}/app.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>20MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>500MB</totalSizeCap>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!--
+        ── Request logger (your filter) ──────────────────────────────────────
+        Set to DEBUG if you want even more detail; INFO is enough for the
+        formatted request blocks the filter emits.
+    -->
+    <logger name="com.yourpackage.logging.RequestLoggingFilter" level="INFO" additivity="false">
+        <appender-ref ref="ROLLING_FILE" />
+        <appender-ref ref="CONSOLE" />
+    </logger>
+
+    <!--
+        ── Root logger ────────────────────────────────────────────────────────
+        Everything else (your controllers, services, Spring internals) also
+        goes to both destinations so you get the full picture in one file.
+    -->
+    <root level="INFO">
+        <appender-ref ref="ROLLING_FILE" />
+        <appender-ref ref="CONSOLE" />
+    </root>
+
+</configuration>
