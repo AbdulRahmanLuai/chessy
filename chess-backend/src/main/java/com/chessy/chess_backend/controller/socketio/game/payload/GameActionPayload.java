@@ -1,6 +1,6 @@
-package com.chessy.chess_backend.controller.socketio.payload;
+package com.chessy.chess_backend.controller.socketio.game.payload;
 
-public class LeaveGamePayload {
+public class GameActionPayload {
     private String gameId;
 
     public String getGameId() { return gameId; }

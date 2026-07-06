@@ -1,4 +1,4 @@
-package com.chessy.chess_backend.controller.socketio.payload;
+package com.chessy.chess_backend.controller.socketio.game.payload;
 
 public class MovePayload {
     private String gameId;

@@ -1,4 +1,4 @@
-package com.chessy.chess_backend.controller.socketio.event;
+package com.chessy.chess_backend.controller.socketio.game.event;
 
 public class DrawOfferedEvent {
     private String byUserId;

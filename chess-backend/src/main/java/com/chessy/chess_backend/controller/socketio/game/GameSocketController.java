@@ -1,7 +1,10 @@
-package com.chessy.chess_backend.controller.socketio;
+package com.chessy.chess_backend.controller.socketio.game;
 
-import com.chessy.chess_backend.controller.socketio.event.*;
-import com.chessy.chess_backend.controller.socketio.payload.*;
+import com.chessy.chess_backend.controller.socketio.game.event.*;
+import com.chessy.chess_backend.controller.socketio.game.payload.GameActionPayload;
+import com.chessy.chess_backend.controller.socketio.game.payload.JoinGamePayload;
+import com.chessy.chess_backend.controller.socketio.game.payload.LeaveGamePayload;
+import com.chessy.chess_backend.controller.socketio.game.payload.MovePayload;
 import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.corundumstudio.socketio.annotation.OnConnect;

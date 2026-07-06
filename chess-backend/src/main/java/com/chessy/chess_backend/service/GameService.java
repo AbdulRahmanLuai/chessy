@@ -57,4 +57,8 @@ public class GameService {
                         .toList())
                 .build();
     }
+
+    public Boolean hasActiveGame(UUID userId){
+        return gameRepository.hasActiveGame(userId);
+    }
 }
