@@ -44,7 +44,12 @@ export function useGame(gameId: string): UseGameReturn {
     
     if (!currentUser) return;
 
+    //ignore stale requests if user navigates away before fetch completes
+    let isActive = true;
+
     setLoading(true);
+
+    if (!isActive) return;
 
     const loadGame = async () => {
       const game = await gameService.getGame(gameId);
@@ -56,6 +61,7 @@ export function useGame(gameId: string): UseGameReturn {
     setLoading(false);
 
     return () => {
+      isActive = false;
       gameSocketService.leave(gameId);
       setGame(null);
       setDrawOfferReceived(false);
