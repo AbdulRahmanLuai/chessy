@@ -5,6 +5,8 @@ import { authService } from '@/services/auth.service';
 import { setAccessToken, resetRefreshState } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
 import type { User } from '@/types';
+import { useSocketConnection } from '@/hooks/useSocketConnection';
+
 
 function mapResponseToUser(data: Awaited<ReturnType<typeof authService.refreshToken>>): User {
   return {
@@ -53,6 +55,7 @@ function SilentRefresh() {
 }
 
 export default function App() {
+  useSocketConnection();
   return (
     <>
       <SilentRefresh />

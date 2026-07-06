@@ -11,13 +11,15 @@ let socket: Socket<
   ClientToServerEvents
 > | null = null;
 
-export function connectSocket() {
-  if (!socket) {
-    socket = io(SOCKET_URL, {
-      withCredentials: true,
-      autoConnect: true,
-    });
+export function connectSocket(token: string) {
+  if (socket?.connected) {
+    return socket;
   }
+
+  socket = io(SOCKET_URL, {
+    auth: { token },
+    autoConnect: true,
+  });
 
   return socket;
 }
