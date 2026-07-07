@@ -22,10 +22,10 @@ public class GameController {
         return ResponseEntity.ok(gameService.getGame(gameId));
     }
 
-    @PostMapping
-    public ResponseEntity<CreateGameResponseDto> createGame() {
-        return ResponseEntity.ok(gameService.createGame());
-    }
+//    @PostMapping
+//    public ResponseEntity<CreateGameResponseDto> createGame() {
+//        return ResponseEntity.ok(gameService.createGame());
+//    }
 
     @GetMapping("/{gameId}/moves")
     public ResponseEntity<MoveListDto> getMoves(@PathVariable UUID gameId) {

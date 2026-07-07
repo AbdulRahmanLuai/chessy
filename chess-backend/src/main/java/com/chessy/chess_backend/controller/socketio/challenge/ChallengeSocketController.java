@@ -3,6 +3,7 @@ package com.chessy.chess_backend.controller.socketio.challenge;
 import com.chessy.chess_backend.controller.socketio.challenge.event.ChallengeAcceptedEvent;
 import com.chessy.chess_backend.controller.socketio.challenge.event.ChallengeEndedEvent;
 import com.chessy.chess_backend.controller.socketio.challenge.event.ChallengeReceivedEvent;
+import com.chessy.chess_backend.controller.socketio.challenge.event.ChallengeSentEvent;
 import com.chessy.chess_backend.controller.socketio.challenge.payload.RespondChallengePayload;
 import com.chessy.chess_backend.controller.socketio.challenge.payload.SendChallengePayload;
 import com.chessy.chess_backend.dto.CreateGameResponseDto;
@@ -13,6 +14,7 @@ import com.corundumstudio.socketio.annotation.OnEvent;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.UUID;
 
 @Component
@@ -44,13 +46,11 @@ public class ChallengeSocketController {
             return;
         }
 
-        // CHECK: Ensure challenger isn't already in an active game
         if (gameService.hasActiveGame(challengerId)) {
             client.sendEvent("challenge:error", "You are already in an active game");
             return;
         }
 
-        // CHECK: Ensure challenged player isn't already in an active game
         if (gameService.hasActiveGame(challengedId)) {
             client.sendEvent("challenge:error", "The challenged user is already in an active game");
             return;
@@ -59,19 +59,29 @@ public class ChallengeSocketController {
         Challenge challenge = challengeService.create(
                 challengerId,
                 challengedId,
+                payload.getPreferredColor(),
                 (oldChallenge, reason) -> notifyEnded(oldChallenge, reason),
                 (expiredChallenge, reason) -> notifyEnded(expiredChallenge, reason)
         );
+
+        server.getRoomOperations("user:" + challengerId).sendEvent("challenge:sent", new ChallengeSentEvent(
+                challenge.getId().toString(),
+                challengedId.toString(),
+                challenge.getPreferredColor(),
+                challenge.getExpiresAt().toEpochMilli()
+        ));
 
         server.getRoomOperations("user:" + challengedId).sendEvent(
                 "challenge:received",
                 new ChallengeReceivedEvent(
                         challenge.getId().toString(),
                         challengerId.toString(),
+                        invertColor(challenge.getPreferredColor()),
                         challenge.getExpiresAt().toEpochMilli()
                 )
         );
     }
+
 
     @OnEvent("challenge:accept")
     public void onAcceptChallenge(SocketIOClient client, RespondChallengePayload payload) {
@@ -89,15 +99,53 @@ public class ChallengeSocketController {
             return;
         }
 
-        challengeService.remove(challengeId);
+        // Re-check active-game status right before committing — up to TTL_SECONDS
+        // could have passed since the challenge was created.
+        if (gameService.hasActiveGame(challenge.getChallengerId())) {
+            client.sendEvent("challenge:error", "Challenger is already in an active game");
+            return;
+        }
+        if (gameService.hasActiveGame(challenge.getChallengedId())) {
+            client.sendEvent("challenge:error", "You are already in an active game");
+            return;
+        }
 
-        String gameId;
-        CreateGameResponseDto game = gameService.createGame();
-        gameId = game.getGameId().toString();
+        // Atomic claim — only one concurrent accept can win this
+        Challenge claimed = challengeService.removeIfPresent(challengeId);
+        if (claimed == null) {
+            client.sendEvent("challenge:error", "Challenge already handled");
+            return;
+        }
 
-        ChallengeAcceptedEvent event = new ChallengeAcceptedEvent(challengeId.toString(), gameId);
-        server.getRoomOperations("user:" + challenge.getChallengerId()).sendEvent("challenge:accepted", event);
-        server.getRoomOperations("user:" + challenge.getChallengedId()).sendEvent("challenge:accepted", event);
+        UUID whiteId;
+        UUID blackId;
+        String color = claimed.getPreferredColor();
+
+        if ("WHITE".equals(color)) {
+            whiteId = claimed.getChallengerId();
+            blackId = claimed.getChallengedId();
+        } else if ("BLACK".equals(color)) {
+            whiteId = claimed.getChallengedId();
+            blackId = claimed.getChallengerId();
+        } else {
+            boolean challengerIsWhite = Math.random() < 0.5;
+            whiteId = challengerIsWhite ? claimed.getChallengerId() : claimed.getChallengedId();
+            blackId = challengerIsWhite ? claimed.getChallengedId() : claimed.getChallengerId();
+        }
+
+        CreateGameResponseDto game = gameService.createGame(whiteId, blackId);
+        String gameId = game.getGameId().toString();
+
+        ChallengeAcceptedEvent event = new ChallengeAcceptedEvent(claimed.getId().toString(), gameId);
+        server.getRoomOperations("user:" + claimed.getChallengerId()).sendEvent("challenge:accepted", event);
+        server.getRoomOperations("user:" + claimed.getChallengedId()).sendEvent("challenge:accepted", event);
+
+        // Auto-cancel any other pending challenges either player was part of
+        List<Challenge> cancelledForChallenger = challengeService.cancelOutgoingForUser(claimed.getChallengerId());
+        List<Challenge> cancelledForChallenged = challengeService.cancelOutgoingForUser(claimed.getChallengedId());
+
+        cancelledForChallenger.forEach(c -> notifyEnded(c, "cancelled"));
+        cancelledForChallenged.forEach(c -> notifyEnded(c, "cancelled"));
     }
 
     @OnEvent("challenge:decline")
@@ -136,5 +184,22 @@ public class ChallengeSocketController {
 
     private UUID resolveUserId(SocketIOClient client) {
         return UUID.fromString(client.get("userId"));
+    }
+
+    public void deliverPendingChallenges(SocketIOClient client, UUID userId) {
+        challengeService.getPendingFor(userId).forEach(challenge ->
+                client.sendEvent("challenge:received", new ChallengeReceivedEvent(
+                        challenge.getId().toString(),
+                        challenge.getChallengerId().toString(),
+                        invertColor(challenge.getPreferredColor()),
+                        challenge.getExpiresAt().toEpochMilli()
+                ))
+        );
+    }
+
+    private String invertColor(String color) {
+        if ("WHITE".equals(color)) return "BLACK";
+        if ("BLACK".equals(color)) return "WHITE";
+        return "RANDOM";
     }
 }

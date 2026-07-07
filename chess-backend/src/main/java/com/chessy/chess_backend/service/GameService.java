@@ -5,6 +5,7 @@ import com.chessy.chess_backend.entity.Game;
 import com.chessy.chess_backend.mapper.GameMapper;
 import com.chessy.chess_backend.mapper.MoveMapper;
 import com.chessy.chess_backend.repository.GameRepository;
+import com.chessy.chess_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,11 +19,13 @@ public class GameService {
     private final GameRepository gameRepository;
     private final GameMapper gameMapper;
     private final MoveMapper moveMapper;
+    private final UserRepository userRepository;
+    
 
-    public CreateGameResponseDto createGame() {
+    public CreateGameResponseDto createGame(UUID whitePlayerId, UUID blackPlayerId) {
         Game game = Game.builder()
-                .whitePlayer(null)
-                .blackPlayer(null)
+                .whitePlayer(userRepository.getById(whitePlayerId))
+                .blackPlayer(userRepository.getById(blackPlayerId))
                 .status(Game.GameStatus.WAITING)
                 .currentFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
                 .moves(new ArrayList<>())

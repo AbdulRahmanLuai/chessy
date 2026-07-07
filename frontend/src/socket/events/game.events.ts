@@ -25,15 +25,12 @@ export interface GameActionPayload {
   gameId: string;
 }
 
-export interface ClientToServerEvents {
+export interface GameClientToServerEvents {
   'game:join': (payload: JoinGamePayload) => void;
   'game:leave': (payload: LeaveGamePayload) => void;
-
   'game:move': (payload: MovePayload) => void;
-
   'game:resign': (payload: GameActionPayload) => void;
   'game:abort': (payload: GameActionPayload) => void;
-
   'game:offerDraw': (payload: GameActionPayload) => void;
   'game:acceptDraw': (payload: GameActionPayload) => void;
   'game:declineDraw': (payload: GameActionPayload) => void;
@@ -47,15 +44,12 @@ export interface ClientToServerEvents {
 
 export interface MoveAppliedEvent {
   gameId: string;
-
   move: {
     from: Square;
     to: Square;
     promotion?: PieceSymbol;
   };
-
   fen: string;
-
   whiteTimeRemainingMs: number;
   blackTimeRemainingMs: number;
 }
@@ -70,22 +64,16 @@ export interface GameEndedEvent {
   reason: string;
 }
 
-export interface ServerToClientEvents {
+export interface GameServerToClientEvents {
   'game:loaded': (payload: {
     fen: string;
     whiteTimeRemainingMs: number;
     blackTimeRemainingMs: number;
   }) => void;
-
   'game:moveApplied': (payload: MoveAppliedEvent) => void;
-
   'game:drawOffered': (payload: DrawOfferedEvent) => void;
-
   'game:drawAccepted': (payload: { gameId: string }) => void;
-
   'game:drawDeclined': (payload: { gameId: string }) => void;
-
   'game:ended': (payload: GameEndedEvent) => void;
-
   'game:error': (message: string) => void;
 }

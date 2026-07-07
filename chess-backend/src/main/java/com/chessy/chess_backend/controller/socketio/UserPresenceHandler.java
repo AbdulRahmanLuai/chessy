@@ -1,6 +1,7 @@
 package com.chessy.chess_backend.controller.socketio;
 
 import com.chessy.chess_backend.controller.socketio.challenge.ChallengeService;
+import com.chessy.chess_backend.controller.socketio.challenge.ChallengeSocketController;
 import com.chessy.chess_backend.controller.socketio.challenge.event.ChallengeReceivedEvent;
 import com.chessy.chess_backend.util.JwtUtil;
 import com.corundumstudio.socketio.SocketIOClient;
@@ -18,12 +19,12 @@ public class UserPresenceHandler {
 
     private final SocketIOServer server;
     private final JwtUtil jwtUtil;
-    private final ChallengeService challengeService;
+    private final ChallengeSocketController challengeSocketController;
 
-    public UserPresenceHandler(SocketIOServer server, JwtUtil jwtUtil, ChallengeService challengeService) {
+    public UserPresenceHandler(SocketIOServer server, JwtUtil jwtUtil, ChallengeSocketController challengeSocketController) {
         this.server = server;
         this.jwtUtil = jwtUtil;
-        this.challengeService = challengeService;
+        this.challengeSocketController = challengeSocketController;
     }
 
     @PostConstruct
@@ -51,13 +52,7 @@ public class UserPresenceHandler {
         client.set("userId", userId.toString());
         client.joinRoom("user:" + userId);
 
-        challengeService.getPendingFor(userId).forEach(challenge ->
-                client.sendEvent("challenge:received", new ChallengeReceivedEvent(
-                        challenge.getId().toString(),
-                        challenge.getChallengerId().toString(),
-                        challenge.getExpiresAt().toEpochMilli()
-                ))
-        );
+        challengeSocketController.deliverPendingChallenges(client, userId);
     }
 
     @OnDisconnect

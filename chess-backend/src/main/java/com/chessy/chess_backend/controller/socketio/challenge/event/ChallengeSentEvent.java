@@ -1,20 +1,20 @@
 package com.chessy.chess_backend.controller.socketio.challenge.event;
 
-public class ChallengeReceivedEvent {
+public class ChallengeSentEvent {
     private String challengeId;
-    private String fromUserId;
-    private String preferredColor; // from the receiver's perspective — see note below
+    private String challengedUserId;
+    private String preferredColor;
     private long expiresAtEpochMs;
 
-    public ChallengeReceivedEvent(String challengeId, String fromUserId, String preferredColor, long expiresAtEpochMs) {
+    public ChallengeSentEvent(String challengeId, String challengedUserId, String preferredColor, long expiresAtEpochMs) {
         this.challengeId = challengeId;
-        this.fromUserId = fromUserId;
+        this.challengedUserId = challengedUserId;
         this.preferredColor = preferredColor;
         this.expiresAtEpochMs = expiresAtEpochMs;
     }
 
     public String getChallengeId() { return challengeId; }
-    public String getFromUserId() { return fromUserId; }
+    public String getChallengedUserId() { return challengedUserId; }
     public String getPreferredColor() { return preferredColor; }
     public long getExpiresAtEpochMs() { return expiresAtEpochMs; }
 }

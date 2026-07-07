@@ -2,6 +2,7 @@ package com.chessy.chess_backend.controller.socketio.challenge;
 
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,23 +16,13 @@ public class ChallengeService {
 
     private static final long TTL_SECONDS = 30;
 
-    // one active outgoing challenge per challenger
     private final Map<UUID, Challenge> byChallenger = new ConcurrentHashMap<>();
-    // lookup by challengeId for accept/decline
     private final Map<UUID, Challenge> byId = new ConcurrentHashMap<>();
-    // reverse index: challenged user -> their pending incoming challenge(s)
-    // kept as challengerId->Challenge is enough since 1 outgoing per user;
-    // but a user can receive from multiple challengers, so index by challengedId -> set of challenge ids
     private final Map<UUID, ConcurrentHashMap.KeySetView<UUID, Boolean>> byChallenged = new ConcurrentHashMap<>();
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
 
-    /**
-     * Creates a new challenge, overriding any existing one from the same challenger.
-     * onOverride is called with the old challenge if one existed, so the caller can notify the old target.
-     * onExpire is called when the challenge naturally times out.
-     */
-    public Challenge create(UUID challengerId, UUID challengedId,
+    public Challenge create(UUID challengerId, UUID challengedId, String preferredColor,
                             BiConsumer<Challenge, String> onOverrideOrCancel,
                             BiConsumer<Challenge, String> onExpire) {
 
@@ -41,12 +32,11 @@ public class ChallengeService {
             onOverrideOrCancel.accept(existing, "overridden");
         }
 
-        Challenge challenge = new Challenge(challengerId, challengedId, TTL_SECONDS);
+        Challenge challenge = new Challenge(challengerId, challengedId, preferredColor, TTL_SECONDS);
 
         var expiryTask = scheduler.schedule(() -> {
-            Challenge stillActive = byId.get(challenge.getId());
+            Challenge stillActive = removeIfPresent(challenge.getId());
             if (stillActive != null) {
-                removeInternal(stillActive);
                 onExpire.accept(stillActive, "expired");
             }
         }, TTL_SECONDS, TimeUnit.SECONDS);
@@ -65,12 +55,22 @@ public class ChallengeService {
         return byId.get(challengeId);
     }
 
-    /** Called on accept/decline/explicit cancel to fully remove the challenge. */
-    public void remove(UUID challengeId) {
-        Challenge challenge = byId.get(challengeId);
+    /**
+     * Atomically claims/removes a challenge. Returns the challenge if it was
+     * actually present and removed, or null if it was already gone (already
+     * accepted/declined/cancelled/expired by a concurrent call).
+     */
+    public Challenge removeIfPresent(UUID challengeId) {
+        Challenge challenge = byId.remove(challengeId);
         if (challenge != null) {
             removeInternal(challenge);
         }
+        return challenge;
+    }
+
+    /** Kept for explicit non-racy removals (decline/cancel), same as removeIfPresent. */
+    public void remove(UUID challengeId) {
+        removeIfPresent(challengeId);
     }
 
     private void removeInternal(Challenge challenge) {
@@ -84,14 +84,25 @@ public class ChallengeService {
         }
     }
 
-    /** Used on user connect to deliver any pending challenges addressed to them. */
-    public java.util.List<Challenge> getPendingFor(UUID userId) {
+    public List<Challenge> getPendingFor(UUID userId) {
         var ids = byChallenged.get(userId);
-        if (ids == null) return java.util.List.of();
+        if (ids == null) return List.of();
 
         return ids.stream()
                 .map(byId::get)
                 .filter(c -> c != null && !c.isExpired())
                 .toList();
+    }
+
+    public List<Challenge> cancelOutgoingForUser(UUID userId) {
+        List<Challenge> cancelled = new java.util.ArrayList<>();
+
+        Challenge outgoing = byChallenger.get(userId);
+        if (outgoing != null) {
+            Challenge removed = removeIfPresent(outgoing.getId());
+            if (removed != null) cancelled.add(removed);
+        }
+
+        return cancelled;
     }
 }

@@ -3,6 +3,7 @@ import { useGameStore } from '@/store/gameStore';
 import { useAuthStore } from '@/store/authStore';
 import { gameSocketService } from '@/socket/gameSocketService';
 import { gameService } from '@/services/game.service';
+import { getSocket } from '@/socket/socket';
 
 import type {
   Square,
@@ -72,9 +73,11 @@ export function useGame(gameId: string): UseGameReturn {
   // ─── Socket event listeners ────────────────────────────────────────────────
 
   useEffect(() => {
-    const socket = require('@/socket/socket').getSocket();
+    const socket = getSocket();
 
-    if (!socket) return;
+    if (!socket) {
+    throw new Error('Socket not initialized. Call connectSocket() first.');
+  }
 
     // move applied from server (authoritative)
     const onMoveApplied = (payload: any) => {

@@ -61,17 +61,19 @@ export interface AuthResponse {
 
 // ─── Friendship ────────────────────────────────────────────────────────────────
 
+// ─── Friendship ────────────────────────────────────────────────────────────────
+
 export type FriendshipStatus = 'PENDING' | 'ACCEPTED';
 
 export interface Friendship {
   id: string;
-  user1: User;
-  user2: User;
-  requester: User;
+  otherUserId: string;
+  otherUsername: string;
+  otherDisplayName: string;
+  requesterId: string;
   status: FriendshipStatus;
   createdAt: string;
 }
-
 // ─── Game ──────────────────────────────────────────────────────────────────────
 
 export type GameStatus = 'WAITING' | 'IN_PROGRESS' | 'COMPLETED' | 'ABORTED';
@@ -119,31 +121,6 @@ export interface Game {
   createdAt: string;
   finishedAt: string | null;
 }
-
-// ─── WebSocket Events ──────────────────────────────────────────────────────────
-
-export type ServerEvent =
-  | { type: 'game:started';          payload: Game }
-  | { type: 'game:move';             payload: { gameId: string; move: Move } }
-  | { type: 'game:over';             payload: { gameId: string; result: GameResult; reason: ResultReason } }
-  | { type: 'game:timeout';          payload: { gameId: string; loser: Color } }
-  | { type: 'opponent:connected';    payload: { gameId: string } }
-  | { type: 'opponent:disconnected'; payload: { gameId: string } }
-  | { type: 'friend:online';         payload: { userId: string } }
-  | { type: 'friend:offline';        payload: { userId: string } }
-  | { type: 'challenge:received';    payload: { gameId: string; from: User; timeControl: TimeControl } }
-  | { type: 'challenge:accepted';    payload: { gameId: string } }
-  | { type: 'challenge:declined';    payload: { gameId: string } };
-
-export type ClientEvent =
-  | { type: 'game:move';         payload: { gameId: string; from: string; to: string; promotion?: string } }
-  | { type: 'game:resign';       payload: { gameId: string } }
-  | { type: 'game:offerDraw';    payload: { gameId: string } }
-  | { type: 'game:acceptDraw';   payload: { gameId: string } }
-  | { type: 'game:declineDraw';  payload: { gameId: string } }
-  | { type: 'challenge:send';    payload: { toUserId: string; timeControl: TimeControl } }
-  | { type: 'challenge:accept';  payload: { gameId: string } }
-  | { type: 'challenge:decline'; payload: { gameId: string } };
 
 // ─── API ───────────────────────────────────────────────────────────────────────
 
