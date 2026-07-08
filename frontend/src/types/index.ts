@@ -30,6 +30,18 @@ export interface User {
   createdAt: string;
 }
 
+// Result shape for username-prefix search (e.g. "challenge by username" lookup).
+// Deliberately separate from `User` — search results may be a trimmed-down
+// projection server-side and we don't want to imply email/createdAt are present.
+export interface UserSearchResult {
+  id: string;
+  username: string;
+  displayName: string;
+}
+
+export type ChallengeTargetMode = 'friend' | 'username';
+
+
 // ─── Auth ──────────────────────────────────────────────────────────────────────
 
 export interface AuthState {
@@ -58,8 +70,6 @@ export interface AuthResponse {
   displayName: string;
   username: string;
 }
-
-// ─── Friendship ────────────────────────────────────────────────────────────────
 
 // ─── Friendship ────────────────────────────────────────────────────────────────
 

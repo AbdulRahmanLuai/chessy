@@ -1,0 +1,123 @@
+/* src/features/game/ChallengeSetupPanel/ChallengeSetupPanel.module.css */
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.modeToggle,
+.colorToggle {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.targetSection {
+  min-height: 120px;
+}
+
+.usernameSearch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.searchSpinner {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-3);
+}
+
+.resultsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.resultRow,
+.resultRowSelected {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  background: transparent;
+  text-align: left;
+  transition: background var(--duration-fast);
+}
+
+.resultRow:hover {
+  background: var(--color-bg-hover);
+}
+
+.resultRowSelected {
+  background: var(--color-accent-muted);
+  border-color: var(--color-accent-border);
+}
+
+.displayName {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text-primary);
+}
+
+.username {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.emptyText {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.colorSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sectionLabel {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.errorText {
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}
+
+/* Add this at the end of the file */
+
+.sendButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-weight: var(--font-semibold);
+  line-height: 1;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background-color: var(--color-accent);
+  color: var(--color-text-inverse);
+  padding: 0 var(--space-4);
+  height: 40px;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: background-color var(--duration-fast);
+  user-select: none;
+  width: 100%;
+}
+
+.sendButton:hover:not(:disabled) {
+  background-color: var(--color-accent-hover);
+}
+
+.sendButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}

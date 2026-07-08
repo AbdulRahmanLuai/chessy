@@ -20,7 +20,8 @@ export interface BadgeProps {
   /** Icon rendered before the label (and after the dot if both are set) */
   icon?: React.ReactNode;
   className?: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  count?: number | string;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -32,6 +33,7 @@ export default function Badge({
   icon,
   className,
   children,
+  count,
 }: BadgeProps) {
   const classNames = [
     styles.badge,
@@ -42,11 +44,17 @@ export default function Badge({
     .filter(Boolean)
     .join(' ');
 
+  const content = count ?? children;
+
   return (
     <span className={classNames}>
       {dot && <span className={styles.dot} aria-hidden="true" />}
-      {icon && <span className={styles.icon} aria-hidden="true">{icon}</span>}
-      {children}
+      {icon && (
+        <span className={styles.icon} aria-hidden="true">
+          {icon}
+        </span>
+      )}
+      {content}
     </span>
   );
 }

@@ -1,27 +1,29 @@
+// src/components/layout/Navbar/Navbar.tsx
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, LogOut, User, Users, Swords } from 'lucide-react';
-import type { User as UserType } from '../../../types';
+import { IncomingChallengesButton } from '@/features/challenge/IncomingChallengesButton';
+import { FriendsPopover } from '@/features/friends/FriendsPopover';
+import { ChallengeSetupPanel } from '@/features/game/ChallengeSetupPanel';
+import Modal from '@/components/ui/Modal';
+import type { Friendship, User as UserType } from '../../../types';
 import styles from './Navbar.module.css';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export interface NavbarProps {
-  /** Authenticated user, or null if not logged in */
   user?: UserType | null;
-  /** Called when the user clicks "Logout" */
   onLogout?: () => void;
-  /** Whether a logout or session check is in progress */
   isLoading?: boolean;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export default function Navbar({ user, onLogout, isLoading = false }: NavbarProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [isFriendsOpen, setIsFriendsOpen] = useState(false);
+  const [challengeFriend, setChallengeFriend] = useState<Friendship | null>(null);
 
-  // Close dropdown on outside click
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const friendsButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Close profile dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -32,7 +34,7 @@ export default function Navbar({ user, onLogout, isLoading = false }: NavbarProp
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Close dropdown on Escape
+  // Close profile dropdown on Escape
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setIsDropdownOpen(false);
@@ -46,33 +48,43 @@ export default function Navbar({ user, onLogout, isLoading = false }: NavbarProp
     onLogout?.();
   };
 
-  const userInitial = user?.username?.charAt(0).toUpperCase() || '?';
-
   return (
     <header className={styles.root}>
       <div className={styles.inner}>
-        {/* ── Logo ────────────────────────────────────────────────────── */}
+        {/* Logo */}
         <Link to="/" className={styles.logo}>
           <span className={styles.logoIcon} aria-hidden="true">♟</span>
           <span className={styles.logoText}>Chessy</span>
         </Link>
 
-        {/* ── Navigation ─────────────────────────────────────────────── */}
+        {/* Navigation */}
         <nav className={styles.nav} aria-label="Main navigation">
           <Link to="/lobby" className={styles.navLink}>
             <Swords size={18} />
             <span>Lobby</span>
           </Link>
-          <Link to="/friends" className={styles.navLink}>
-            <Users size={18} />
-            <span>Friends</span>
-          </Link>
+
+          {user && (
+            <button
+              ref={friendsButtonRef}
+              className={styles.navLink}
+              onClick={() => setIsFriendsOpen((prev) => !prev)}
+              type="button"
+              aria-expanded={isFriendsOpen}
+              aria-haspopup="true"
+            >
+              <Users size={18} />
+              <span>Friends</span>
+            </button>
+          )}
         </nav>
 
-        {/* ── User Menu ────────────────────────────────────────────────── */}
+        {/* User Menu */}
         <div className={styles.userMenu} ref={dropdownRef}>
           {user ? (
             <>
+              <IncomingChallengesButton className={styles.challengesButton} />
+
               <button
                 className={styles.trigger}
                 onClick={() => setIsDropdownOpen((prev) => !prev)}
@@ -81,13 +93,8 @@ export default function Navbar({ user, onLogout, isLoading = false }: NavbarProp
                 aria-label="User menu"
                 disabled={isLoading}
               >
-                
                 <span className={styles.userName}>{user.username}</span>
-                <ChevronDown
-                  size={16}
-                  className={styles.chevron}
-                  aria-hidden="true"
-                />
+                <ChevronDown size={16} className={styles.chevron} aria-hidden="true" />
               </button>
 
               {isDropdownOpen && (
@@ -115,16 +122,38 @@ export default function Navbar({ user, onLogout, isLoading = false }: NavbarProp
             </>
           ) : (
             <div className={styles.guestActions}>
-              <Link to="/login" className={styles.loginLink}>
-                Sign in
-              </Link>
-              <Link to="/register" className={styles.registerLink}>
-                Get started
-              </Link>
+              <Link to="/login" className={styles.loginLink}>Sign in</Link>
+              <Link to="/register" className={styles.registerLink}>Get started</Link>
             </div>
           )}
         </div>
       </div>
+
+      {/* Friends Popover (dropdown) */}
+      {isFriendsOpen && (
+        <div className={styles.popoverAnchor}>
+          <FriendsPopover
+            onClose={() => setIsFriendsOpen(false)}
+            onChallenge={(friend) => {
+              setChallengeFriend(friend);
+            }}
+          />
+        </div>
+      )}
+
+      {/* Challenge Modal (opened from popover) */}
+      <Modal
+        isOpen={challengeFriend !== null}
+        onClose={() => setChallengeFriend(null)}
+        title="Challenge Friend"
+      >
+        {challengeFriend && (
+          <ChallengeSetupPanel
+            presetFriend={challengeFriend}
+            onChallengeSent={() => setChallengeFriend(null)}
+          />
+        )}
+      </Modal>
     </header>
   );
 }

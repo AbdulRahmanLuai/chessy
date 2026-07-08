@@ -1,3 +1,4 @@
+// src/socket/events/challenge.events.ts
 //
 // ─────────────────────────────────────────────────────────────
 // CLIENT → SERVER EVENTS
@@ -35,9 +36,15 @@ export interface ChallengeSentEvent {
   expiresAtEpochMs: number;
 }
 
+// Backend now includes the challenger's username/displayName directly on
+// this payload (rather than the frontend having to resolve fromUserId via a
+// separate lookup) — needed so the global incoming-challenges button in the
+// navbar can render who each challenge is from without extra round-trips.
 export interface ChallengeReceivedEvent {
   challengeId: string;
   fromUserId: string;
+  fromUsername: string;
+  fromDisplayName: string;
   preferredColor: PreferredColor;
   expiresAtEpochMs: number;
 }

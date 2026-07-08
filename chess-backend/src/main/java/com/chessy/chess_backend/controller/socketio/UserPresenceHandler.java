@@ -1,8 +1,6 @@
 package com.chessy.chess_backend.controller.socketio;
 
-import com.chessy.chess_backend.controller.socketio.challenge.ChallengeService;
 import com.chessy.chess_backend.controller.socketio.challenge.ChallengeSocketController;
-import com.chessy.chess_backend.controller.socketio.challenge.event.ChallengeReceivedEvent;
 import com.chessy.chess_backend.util.JwtUtil;
 import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
@@ -34,16 +32,18 @@ public class UserPresenceHandler {
 
     @OnConnect
     public void onConnect(SocketIOClient client) {
-        Object authToken = client.getHandshakeData().getAuthToken();
+        String jwt = null;
 
-        if (authToken == null) {
-            client.disconnect();
-            return;
+        Object authToken = client.getHandshakeData().getAuthToken();
+        if (authToken != null) {
+            jwt = ((Map<String, Object>) authToken).get("token").toString();
         }
 
-        String jwt = ((Map<String, Object>) authToken).get("token").toString();
+        if (jwt == null) {
+            jwt = client.getHandshakeData().getSingleUrlParam("token");
+        }
 
-        if (!jwtUtil.validateToken(jwt)) {
+        if (jwt == null || !jwtUtil.validateToken(jwt)) {
             client.disconnect();
             return;
         }
@@ -51,15 +51,11 @@ public class UserPresenceHandler {
         UUID userId = jwtUtil.extractUserId(jwt);
         client.set("userId", userId.toString());
         client.joinRoom("user:" + userId);
-
         challengeSocketController.deliverPendingChallenges(client, userId);
     }
 
     @OnDisconnect
     public void onDisconnect(SocketIOClient client) {
-        String userId = client.get("userId");
-        System.out.println("User " + userId + " disconnected: " + client.getSessionId());
+        // nothing needed; userId stored for future use
     }
-
-
 }

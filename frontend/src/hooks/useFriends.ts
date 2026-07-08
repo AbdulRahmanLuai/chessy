@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { getSocket } from '@/socket/socket';
 import { friendsService } from '@/services/friends.service';
+import { useNotificationStore } from '@/store/notificationStore';
 import {
   useFriendStore,
   useLatestFriendNotification,
@@ -30,19 +31,29 @@ export function useFriends() {
   const bumpFriends = useFriendStore((s) => s.bumpFriends);
   const setError = useFriendStore((s) => s.setError);
 
+  const pushToast = useNotificationStore((s) => s.push);
+
   // ─── Socket listeners — transient notification only ────────────────────────
 
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
 
+    
     const onRequestReceived = (payload: FriendRequestReceivedEvent) => {
       setNotification({
         type: 'requestReceived',
         friendshipId: payload.friendshipId,
         fromUsername: payload.fromUsername,
       });
+
       bumpIncomingRequests();
+
+      pushToast({
+        kind: 'friendRequest',
+        friendshipId: payload.friendshipId,
+        fromUsername: payload.fromUsername,
+      });
     };
 
     const onRequestAccepted = (payload: FriendRequestAcceptedEvent) => {

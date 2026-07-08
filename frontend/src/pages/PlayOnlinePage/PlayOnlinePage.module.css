@@ -1,0 +1,46 @@
+/* src/pages/PlayOnlinePage/PlayOnlinePage.module.css */
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-4);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  color: var(--color-text-primary);
+}
+
+.layout {
+  display: flex;
+  gap: var(--space-8);
+  align-items: flex-start;
+}
+
+.boardColumn {
+  flex: 1 1 560px;
+  max-width: 640px;
+}
+
+.panelColumn {
+  flex: 1 1 320px;
+  min-width: 280px;
+}
+
+@media (max-width: 1200px) {
+  .layout {
+    flex-direction: column;
+  }
+
+  .boardColumn {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .panelColumn {
+    width: 100%;
+  }
+}

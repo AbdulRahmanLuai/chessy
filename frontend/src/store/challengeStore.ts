@@ -1,3 +1,4 @@
+// src/store/challengeStore.ts
 import { create } from 'zustand';
 import { PreferredColor } from '@/socket/events';
 
@@ -11,9 +12,10 @@ export interface OutgoingChallenge {
 export interface IncomingChallenge {
   challengeId: string;
   fromUserId: string;
+  fromUsername: string;
+  fromDisplayName: string;
   expiresAtEpochMs: number;
   preferredColor: PreferredColor;
-
 }
 
 interface ChallengeStore {
@@ -59,9 +61,9 @@ export const useChallengeStore = create<ChallengeStore>((set) => ({
       return { incomingChallenges: next };
     }),
 
-    acceptedGameId: null,
-    setAcceptedGameId: (gameId) => set({ acceptedGameId: gameId }),
-    clearAcceptedGameId: () => set({ acceptedGameId: null }),
+  acceptedGameId: null,
+  setAcceptedGameId: (gameId) => set({ acceptedGameId: gameId }),
+  clearAcceptedGameId: () => set({ acceptedGameId: null }),
 
   setError: (message) => set({ error: message }),
 

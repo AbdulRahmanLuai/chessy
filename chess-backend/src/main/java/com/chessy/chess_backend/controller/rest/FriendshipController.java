@@ -63,6 +63,7 @@ public class FriendshipController {
         return friendshipMapper.toDto(friendship, accepterId);
     }
 
+
     @PostMapping("/requests/{friendshipId}/decline")
     public void declineRequest(Authentication auth, @PathVariable UUID friendshipId) {
         UUID declinerId = resolveUserId(auth);

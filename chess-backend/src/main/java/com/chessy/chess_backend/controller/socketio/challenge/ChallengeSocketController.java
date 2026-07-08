@@ -7,6 +7,8 @@ import com.chessy.chess_backend.controller.socketio.challenge.event.ChallengeSen
 import com.chessy.chess_backend.controller.socketio.challenge.payload.RespondChallengePayload;
 import com.chessy.chess_backend.controller.socketio.challenge.payload.SendChallengePayload;
 import com.chessy.chess_backend.dto.CreateGameResponseDto;
+import com.chessy.chess_backend.entity.User;
+import com.chessy.chess_backend.repository.UserRepository;
 import com.chessy.chess_backend.service.GameService;
 import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
@@ -23,12 +25,14 @@ public class ChallengeSocketController {
     private final SocketIOServer server;
     private final ChallengeService challengeService;
     private final GameService gameService;
+    private final UserRepository userRepository;
 
-    public ChallengeSocketController(SocketIOServer server, ChallengeService challengeService, GameService gameService) {
+    public ChallengeSocketController(SocketIOServer server, ChallengeService challengeService,
+                                     GameService gameService, UserRepository userRepository) {
         this.server = server;
         this.challengeService = challengeService;
         this.gameService = gameService;
-
+        this.userRepository = userRepository;
     }
 
     @PostConstruct
@@ -71,11 +75,23 @@ public class ChallengeSocketController {
                 challenge.getExpiresAt().toEpochMilli()
         ));
 
+        User challenger = userRepository.findById(challengerId)
+                .orElseThrow(() -> new RuntimeException("User not found: " + challengerId));
+
+
+        System.out.println(
+                "Emitting challenge:received -> toUser=" +
+                        challenge.getChallengedId() +
+                        ", challengeId=" +
+                        challenge.getId()
+        );
         server.getRoomOperations("user:" + challengedId).sendEvent(
                 "challenge:received",
                 new ChallengeReceivedEvent(
                         challenge.getId().toString(),
                         challengerId.toString(),
+                        challenger.getUsername(),
+                        challenger.getDisplayName(),
                         invertColor(challenge.getPreferredColor()),
                         challenge.getExpiresAt().toEpochMilli()
                 )
@@ -187,14 +203,19 @@ public class ChallengeSocketController {
     }
 
     public void deliverPendingChallenges(SocketIOClient client, UUID userId) {
-        challengeService.getPendingFor(userId).forEach(challenge ->
-                client.sendEvent("challenge:received", new ChallengeReceivedEvent(
-                        challenge.getId().toString(),
-                        challenge.getChallengerId().toString(),
-                        invertColor(challenge.getPreferredColor()),
-                        challenge.getExpiresAt().toEpochMilli()
-                ))
-        );
+        challengeService.getPendingFor(userId).forEach(challenge -> {
+            User challenger = userRepository.findById(challenge.getChallengerId())
+                    .orElseThrow(() -> new RuntimeException("User not found: " + challenge.getChallengerId()));
+
+            client.sendEvent("challenge:received", new ChallengeReceivedEvent(
+                    challenge.getId().toString(),
+                    challenge.getChallengerId().toString(),
+                    challenger.getUsername(),
+                    challenger.getDisplayName(),
+                    invertColor(challenge.getPreferredColor()),
+                    challenge.getExpiresAt().toEpochMilli()
+            ));
+        });
     }
 
     private String invertColor(String color) {

@@ -19,8 +19,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class FriendshipService {
 
-    // TODO: figure out case: user1 sends request to userb, but userb already sent request to usera.
-
     private final FriendshipRepository friendshipRepository;
     private final UserRepository userRepository;
     private final FriendshipMapper friendshipMapper;

@@ -1,3 +1,4 @@
+// src/router.tsx
 import { createBrowserRouter } from 'react-router-dom';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import GuestRoute from './components/layout/GuestRoute';
@@ -7,7 +8,7 @@ import RegisterPage from './pages/RegisterPage/RegisterPage';
 import LobbyPage from './pages/LobbyPage/LobbyPage';
 import OAuthCallbackPage from './pages/OAuthCallbackPage/OAuthCallbackPage';
 import GamePage from './pages/GamePage/GamePage';
-// import GamePage from './pages/GamePage/GamePage';
+import PlayOnlinePage from './pages/PlayOnlinePage/PlayOnlinePage';
 
 export const router = createBrowserRouter([
   {
@@ -71,9 +72,16 @@ export const router = createBrowserRouter([
   },
 
   {
-    path: '/game/:gameId',
-    element: <GamePage />,
+    path: '/play-online',
+    element: <ProtectedRoute />,
+    children: [{ index: true, element: <PlayOnlinePage /> }],
   },
+
+  {
+  path: '/game/:gameId',
+  element: <ProtectedRoute />,
+  children: [{ index: true, element: <GamePage /> }],
+},
 
   // ── 404 ───────────────────────────────────────────────────────────────────
   {

@@ -1,6 +1,9 @@
 package com.chessy.chess_backend.mapper;
 
 import com.chessy.chess_backend.dto.GameDto;
+import com.chessy.chess_backend.dto.MoveDto;
+import com.chessy.chess_backend.dto.PlayerDto;
+import com.chessy.chess_backend.entity.User;
 import com.chessy.chess_backend.model.Move;
 import com.chessy.chess_backend.entity.Game;
 import lombok.RequiredArgsConstructor;
@@ -17,8 +20,8 @@ public class GameMapper {
     public GameDto toDto(Game game) {
         return GameDto.builder()
                 .id(game.getId())
-                .whitePlayer(null) // fill later when PlayerDto exists
-                .blackPlayer(null)
+                .whitePlayer(toPlayerDto(game.getWhitePlayer()))
+                .blackPlayer(toPlayerDto(game.getBlackPlayer()))
                 .status(game.getStatus())
                 .currentFen(game.getCurrentFen())
                 .moves(mapMoves(game.getMoves()))
@@ -35,7 +38,17 @@ public class GameMapper {
                 .build();
     }
 
-    private List<com.chessy.chess_backend.dto.MoveDto> mapMoves(List<Move> moves) {
+    private PlayerDto toPlayerDto(User user) {
+        if (user == null) return null;
+
+        return PlayerDto.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .displayName(user.getDisplayName())
+                .build();
+    }
+
+    private List<MoveDto> mapMoves(List<Move> moves) {
         if (moves == null) return List.of();
 
         return moves.stream()

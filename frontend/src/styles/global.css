@@ -115,6 +115,11 @@
   --navbar-height:   60px;
   --sidebar-width:   280px;
   --content-max-width: 1200px;
+  /* Layout */
+  --navbar-height:   60px;
+  --sidebar-width:   280px;
+  --content-max-width: 1200px;
+  --toast-width:     320px;
 
   /* Z-index scale */
   --z-base:    0;
@@ -234,3 +239,4 @@ ul, ol {
   white-space: nowrap;
   border-width: 0;
 }
+

@@ -1,5 +1,6 @@
+// src/pages/LobbyPage/LobbyPage.tsx
 import PlayComputerCard from '@/features/lobby/PlayComputerCard/PlayComputerCard';
-import ChallengeFriendCard from '@/features/lobby/ChallengeFriendCard/ChallengeFriendCard';
+import { PlayOnlineCard } from '@/features/lobby/PlayOnlineCard';
 import InviteLinkCard from '@/features/lobby/InviteLinkCard/InviteLinkCard';
 import styles from './LobbyPage.module.css';
 
@@ -10,7 +11,7 @@ export default function LobbyPage() {
       <p className={styles.subtitle}>Choose your game mode</p>
       <div className={styles.grid}>
         <PlayComputerCard />
-        <ChallengeFriendCard />
+        <PlayOnlineCard />
         <InviteLinkCard />
       </div>
     </div>

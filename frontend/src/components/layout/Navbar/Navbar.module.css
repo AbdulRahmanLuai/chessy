@@ -270,3 +270,11 @@
     display: none;
   }
 }
+
+.challengesButton {
+  margin-right: var(--space-2);
+}
+
+.popoverAnchor {
+  position: relative;
+}

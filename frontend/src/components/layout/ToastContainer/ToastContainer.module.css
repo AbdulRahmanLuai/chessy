@@ -1,0 +1,42 @@
+.container {
+  position: fixed;
+  top: calc(var(--navbar-height) + var(--space-4));
+  right: var(--space-4);
+
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-3);
+
+  width: var(--toast-width);
+
+  z-index: var(--z-toast);
+
+  pointer-events: none;
+}
+
+.item {
+  width: 100%;
+  pointer-events: auto;
+
+  transition:
+    opacity var(--duration-normal),
+    transform var(--duration-normal),
+    filter var(--duration-normal);
+}
+
+.stack0 {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: none;
+}
+
+.stack1 {
+  opacity: 0.8;
+  transform: translateY(-6px) scale(0.98);
+}
+
+.stack2 {
+  opacity: 0.6;
+  transform: translateY(-12px) scale(0.96);
+}
