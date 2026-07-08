@@ -1,5 +1,6 @@
 package com.chessy.chess_backend.config;
 
+import com.corundumstudio.socketio.AuthorizationResult;
 import com.corundumstudio.socketio.Configuration;
 import com.corundumstudio.socketio.SocketIOServer;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,6 +15,9 @@ public class SocketIOConfig {
         config.setHostname("localhost");
         config.setPort(9092);
         config.setOrigin(frontendUrl);
+
+        config.setAuthorizationListener(handshakeData ->
+                AuthorizationResult.SUCCESSFUL_AUTHORIZATION);
 
         return new SocketIOServer(config);
     }
