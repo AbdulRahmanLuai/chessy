@@ -8,6 +8,7 @@ import com.chessy.chess_backend.repository.GameRepository;
 import com.chessy.chess_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.UUID;
@@ -20,7 +21,7 @@ public class GameService {
     private final GameMapper gameMapper;
     private final MoveMapper moveMapper;
     private final UserRepository userRepository;
-    
+
 
     public CreateGameResponseDto createGame(UUID whitePlayerId, UUID blackPlayerId) {
         Game game = Game.builder()
@@ -63,5 +64,16 @@ public class GameService {
 
     public Boolean hasActiveGame(UUID userId){
         return gameRepository.hasActiveGame(userId);
+    }
+
+    @Transactional
+    public GameDto startGame(UUID gameId) {
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow();
+
+        game.setStatus(Game.GameStatus.IN_PROGRESS);
+        gameRepository.save(game);
+
+        return gameMapper.toDto(game);
     }
 }

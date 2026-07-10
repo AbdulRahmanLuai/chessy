@@ -8,12 +8,14 @@ import com.chessy.chess_backend.controller.socketio.challenge.payload.RespondCha
 import com.chessy.chess_backend.controller.socketio.challenge.payload.SendChallengePayload;
 import com.chessy.chess_backend.dto.CreateGameResponseDto;
 import com.chessy.chess_backend.entity.User;
+import com.chessy.chess_backend.event.SocketAuthenticatedEvent;
 import com.chessy.chess_backend.repository.UserRepository;
 import com.chessy.chess_backend.service.GameService;
 import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.corundumstudio.socketio.annotation.OnEvent;
 import jakarta.annotation.PostConstruct;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -40,9 +42,17 @@ public class ChallengeSocketController {
         server.addListeners(this);
     }
 
+
+    @EventListener
+    public void onAuthenticated(SocketAuthenticatedEvent event) {
+        deliverPendingChallenges(event.getClient(), event.getUserId());
+    }
+
     @OnEvent("challenge:send")
     public void onSendChallenge(SocketIOClient client, SendChallengePayload payload) {
-        UUID challengerId = resolveUserId(client);
+        UUID challengerId = requireAuth(client);
+        if (challengerId == null) return;
+
         UUID challengedId = UUID.fromString(payload.getChallengedUserId());
 
         if (challengerId.equals(challengedId)) {
@@ -101,6 +111,9 @@ public class ChallengeSocketController {
 
     @OnEvent("challenge:accept")
     public void onAcceptChallenge(SocketIOClient client, RespondChallengePayload payload) {
+        UUID responderId = requireAuth(client);
+        if (responderId == null) return;
+
         UUID challengeId = UUID.fromString(payload.getChallengeId());
         Challenge challenge = challengeService.get(challengeId);
 
@@ -109,7 +122,6 @@ public class ChallengeSocketController {
             return;
         }
 
-        UUID responderId = resolveUserId(client);
         if (!responderId.equals(challenge.getChallengedId())) {
             client.sendEvent("challenge:error", "Not your challenge to accept");
             return;
@@ -166,6 +178,9 @@ public class ChallengeSocketController {
 
     @OnEvent("challenge:decline")
     public void onDeclineChallenge(SocketIOClient client, RespondChallengePayload payload) {
+        UUID userId = requireAuth(client);
+        if (userId == null) return;
+
         UUID challengeId = UUID.fromString(payload.getChallengeId());
         Challenge challenge = challengeService.get(challengeId);
 
@@ -177,12 +192,14 @@ public class ChallengeSocketController {
 
     @OnEvent("challenge:cancel")
     public void onCancelChallenge(SocketIOClient client, RespondChallengePayload payload) {
+        UUID requesterId = requireAuth(client);
+        if (requesterId == null) return;
+
         UUID challengeId = UUID.fromString(payload.getChallengeId());
         Challenge challenge = challengeService.get(challengeId);
 
         if (challenge == null) return;
 
-        UUID requesterId = resolveUserId(client);
         if (!requesterId.equals(challenge.getChallengerId())) {
             client.sendEvent("challenge:error", "Not your challenge to cancel");
             return;
@@ -198,11 +215,15 @@ public class ChallengeSocketController {
         server.getRoomOperations("user:" + challenge.getChallengedId()).sendEvent("challenge:ended", event);
     }
 
-    private UUID resolveUserId(SocketIOClient client) {
-        return UUID.fromString(client.get("userId"));
+    private UUID requireAuth(SocketIOClient client) {
+        UUID userId = client.get("userId");
+        if (userId == null) {
+            client.sendEvent("challenge:error", "Not authenticated");
+        }
+        return userId;
     }
 
-    public void deliverPendingChallenges(SocketIOClient client, UUID userId) {
+    private void deliverPendingChallenges(SocketIOClient client, UUID userId) {
         challengeService.getPendingFor(userId).forEach(challenge -> {
             User challenger = userRepository.findById(challenge.getChallengerId())
                     .orElseThrow(() -> new RuntimeException("User not found: " + challenge.getChallengerId()));

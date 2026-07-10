@@ -5,21 +5,27 @@ import com.chessy.chess_backend.controller.socketio.game.payload.GameActionPaylo
 import com.chessy.chess_backend.controller.socketio.game.payload.JoinGamePayload;
 import com.chessy.chess_backend.controller.socketio.game.payload.LeaveGamePayload;
 import com.chessy.chess_backend.controller.socketio.game.payload.MovePayload;
+import com.chessy.chess_backend.dto.GameDto;
+import com.chessy.chess_backend.entity.Game;
+import com.chessy.chess_backend.service.GameService;
 import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
-import com.corundumstudio.socketio.annotation.OnConnect;
 import com.corundumstudio.socketio.annotation.OnDisconnect;
 import com.corundumstudio.socketio.annotation.OnEvent;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
+
 @Component
 public class GameSocketController {
 
     private final SocketIOServer server;
+    private final GameService gameService;
 
-    public GameSocketController(SocketIOServer server) {
+    public GameSocketController(SocketIOServer server, GameService gameService) {
         this.server = server;
+        this.gameService = gameService;
     }
 
     @PostConstruct
@@ -27,40 +33,40 @@ public class GameSocketController {
         server.addListeners(this);
     }
 
-    @OnConnect
-    public void onConnect(SocketIOClient client) {
-        System.out.println("Connected: " + client.getSessionId());
-    }
-
-    @OnDisconnect
-    public void onDisconnect(SocketIOClient client) {
-        System.out.println("Disconnected: " + client.getSessionId());
-    }
 
     @OnEvent("game:join")
     public void onJoinGame(SocketIOClient client, JoinGamePayload payload) {
+        UUID userId = requireAuth(client);
+        if (userId == null) return;
+
         String gameId = payload.getGameId();
         client.joinRoom(gameId);
 
-        // TODO: load game state from DB/service
-        String fen = "startpos"; // placeholder
-        long whiteTimeRemainingMs = 0;
-        long blackTimeRemainingMs = 0;
+        GameDto startedGame = gameService.startGame(UUID.fromString(gameId));
 
         client.sendEvent("game:loaded",
-                new GameLoadedEvent(fen, whiteTimeRemainingMs, blackTimeRemainingMs));
+                new GameLoadedEvent(startedGame.getCurrentFen(),
+                        startedGame.getWhiteTimeRemainingMs(),
+                        startedGame.getBlackTimeRemainingMs())
+        );
     }
 
     @OnEvent("game:leave")
     public void onLeaveGame(SocketIOClient client, LeaveGamePayload payload) {
+        UUID userId = requireAuth(client);
+        if (userId == null) return;
+
         client.leaveRoom(payload.getGameId());
     }
 
     @OnEvent("game:move")
     public void onMove(SocketIOClient client, MovePayload payload) {
+        UUID userId = requireAuth(client);
+        if (userId == null) return;
+
         String gameId = payload.getGameId();
 
-        // TODO: validate move against game state/engine
+        // TODO: validate move against game state/engine, confirm userId is a player in this game and it's their turn
         boolean isValid = true; // placeholder
 
         if (!isValid) {
@@ -88,9 +94,12 @@ public class GameSocketController {
 
     @OnEvent("game:resign")
     public void onResign(SocketIOClient client, GameActionPayload payload) {
+        UUID userId = requireAuth(client);
+        if (userId == null) return;
+
         String gameId = payload.getGameId();
 
-        // TODO: determine winner based on who resigned, persist result
+        // TODO: confirm userId is a player in this game; determine winner based on who resigned, persist result
         String result = "..."; // e.g. "0-1" or "1-0"
 
         server.getRoomOperations(gameId)
@@ -99,29 +108,35 @@ public class GameSocketController {
 
     @OnEvent("game:abort")
     public void onAbort(SocketIOClient client, GameActionPayload payload) {
+        UUID userId = requireAuth(client);
+        if (userId == null) return;
+
         String gameId = payload.getGameId();
 
-        // TODO: only allow abort under certain conditions (e.g. before move 1)
+        // TODO: confirm userId is a player in this game; only allow abort under certain conditions (e.g. before move 1)
         server.getRoomOperations(gameId)
                 .sendEvent("game:ended", new GameEndedEvent(gameId, "aborted", "abort"));
     }
 
     @OnEvent("game:offerDraw")
     public void onOfferDraw(SocketIOClient client, GameActionPayload payload) {
+        UUID userId = requireAuth(client);
+        if (userId == null) return;
+
         String gameId = payload.getGameId();
 
-        // TODO: resolve the offering user's ID from session/auth
-        String byUserId = "..."; // placeholder
-
         server.getRoomOperations(gameId)
-                .sendEvent("game:drawOffered", new DrawOfferedEvent(byUserId));
+                .sendEvent("game:drawOffered", new DrawOfferedEvent(userId.toString()));
     }
 
     @OnEvent("game:acceptDraw")
     public void onAcceptDraw(SocketIOClient client, GameActionPayload payload) {
+        UUID userId = requireAuth(client);
+        if (userId == null) return;
+
         String gameId = payload.getGameId();
 
-        // TODO: persist draw result
+        // TODO: confirm userId is a player in this game; persist draw result
         server.getRoomOperations(gameId)
                 .sendEvent("game:drawAccepted", new GameIdEvent(gameId));
 
@@ -131,9 +146,20 @@ public class GameSocketController {
 
     @OnEvent("game:declineDraw")
     public void onDeclineDraw(SocketIOClient client, GameActionPayload payload) {
+        UUID userId = requireAuth(client);
+        if (userId == null) return;
+
         String gameId = payload.getGameId();
 
         server.getRoomOperations(gameId)
                 .sendEvent("game:declineDraw", new GameIdEvent(gameId));
+    }
+
+    private UUID requireAuth(SocketIOClient client) {
+        UUID userId = client.get("userId");
+        if (userId == null) {
+            client.sendEvent("game:error", "Not authenticated");
+        }
+        return userId;
     }
 }
