@@ -3,7 +3,7 @@ import { useGameStore } from '@/store/gameStore';
 import { useAuthStore } from '@/store/authStore';
 import { gameSocketService } from '@/socket/gameSocketService';
 import { gameService } from '@/services/game.service';
-import { getSocket } from '@/socket/socket';
+import { getSocket, onSocketReady } from '@/socket/socket';
 
 import type {
   Square,
@@ -73,52 +73,60 @@ export function useGame(gameId: string): UseGameReturn {
   // ─── Socket event listeners ────────────────────────────────────────────────
 
   useEffect(() => {
-    const socket = getSocket();
+    let cleanupListeners: (() => void) | null = null;
 
-    if (!socket) {
-    throw new Error('Socket not initialized. Call connectSocket() first.');
-  }
+    const setupListeners = () => {
+      const socket = getSocket();
+      if (!socket) return; // defensive; shouldn't happen once called from onSocketReady
 
-    // move applied from server (authoritative)
-    const onMoveApplied = (payload: any) => {
-      applyMove(
-        payload.move,
-        payload.fen,
-        payload.whiteTimeRemainingMs,
-        payload.blackTimeRemainingMs,
-      );
+      // move applied from server (authoritative)
+      const onMoveApplied = (payload: any) => {
+        applyMove(
+          payload.move,
+          payload.fen,
+          payload.whiteTimeRemainingMs,
+          payload.blackTimeRemainingMs,
+        );
+      };
+
+      const onDrawOffered = () => {
+        setDrawOfferReceived(true);
+      };
+
+      const onDrawAccepted = () => {
+        setDrawOfferSent(false);
+        setDrawOfferReceived(false);
+      };
+
+      const onDrawDeclined = () => {
+        setDrawOfferSent(false);
+        setDrawOfferReceived(false);
+      };
+
+      const onGameEnded = (payload: any) => {
+        setResult('COMPLETED', payload.result, payload.reason);
+      };
+
+      socket.on('game:moveApplied', onMoveApplied);
+      socket.on('game:drawOffered', onDrawOffered);
+      socket.on('game:drawAccepted', onDrawAccepted);
+      socket.on('game:drawDeclined', onDrawDeclined);
+      socket.on('game:ended', onGameEnded);
+
+      cleanupListeners = () => {
+        socket.off('game:moveApplied', onMoveApplied);
+        socket.off('game:drawOffered', onDrawOffered);
+        socket.off('game:drawAccepted', onDrawAccepted);
+        socket.off('game:drawDeclined', onDrawDeclined);
+        socket.off('game:ended', onGameEnded);
+      };
     };
 
-    const onDrawOffered = () => {
-      setDrawOfferReceived(true);
-    };
-
-    const onDrawAccepted = () => {
-      setDrawOfferSent(false);
-      setDrawOfferReceived(false);
-    };
-
-    const onDrawDeclined = () => {
-      setDrawOfferSent(false);
-      setDrawOfferReceived(false);
-    };
-
-    const onGameEnded = (payload: any) => {
-      setResult('COMPLETED', payload.result, payload.reason);
-    };
-
-    socket.on('game:moveApplied', onMoveApplied);
-    socket.on('game:drawOffered', onDrawOffered);
-    socket.on('game:drawAccepted', onDrawAccepted);
-    socket.on('game:drawDeclined', onDrawDeclined);
-    socket.on('game:ended', onGameEnded);
+    const unsubscribeReady = onSocketReady(setupListeners);
 
     return () => {
-      socket.off('game:moveApplied', onMoveApplied);
-      socket.off('game:drawOffered', onDrawOffered);
-      socket.off('game:drawAccepted', onDrawAccepted);
-      socket.off('game:drawDeclined', onDrawDeclined);
-      socket.off('game:ended', onGameEnded);
+      unsubscribeReady();
+      cleanupListeners?.();
     };
   }, [applyMove, setResult]);
 

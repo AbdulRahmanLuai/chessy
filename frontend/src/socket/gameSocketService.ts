@@ -1,17 +1,13 @@
-import { getSocket } from './socket';
+import { emitWhenReady } from './socket';
 import type { PieceSymbol, Square } from '@/types';
 
 export const gameSocketService = {
   join(gameId: string) {
-    const socket = getSocket();
-    if (!socket) return;
-    socket.emit('game:join', { gameId });
+    emitWhenReady('game:join', { gameId });
   },
 
   leave(gameId: string) {
-    const socket = getSocket();
-    if (!socket) return;
-    socket.emit('game:leave', { gameId });
+    emitWhenReady('game:leave', { gameId });
   },
 
   move(params: {
@@ -20,38 +16,26 @@ export const gameSocketService = {
     to: Square;
     promotion?: PieceSymbol;
   }) {
-    const socket = getSocket();
-    if (!socket) return;
-    socket.emit('game:move', params);
+    emitWhenReady('game:move', params);
   },
 
   resign(gameId: string) {
-    const socket = getSocket();
-    if (!socket) return;
-    socket.emit('game:resign', { gameId });
+    emitWhenReady('game:resign', { gameId });
   },
 
   abort(gameId: string) {
-    const socket = getSocket();
-    if (!socket) return;
-    socket.emit('game:abort', { gameId });
+    emitWhenReady('game:abort', { gameId });
   },
 
   offerDraw(gameId: string) {
-    const socket = getSocket();
-    if (!socket) return;
-    socket.emit('game:offerDraw', { gameId });
+    emitWhenReady('game:offerDraw', { gameId });
   },
 
   acceptDraw(gameId: string) {
-    const socket = getSocket();
-    if (!socket) return;
-    socket.emit('game:acceptDraw', { gameId });
+    emitWhenReady('game:acceptDraw', { gameId });
   },
 
   declineDraw(gameId: string) {
-    const socket = getSocket();
-    if (!socket) return;
-    socket.emit('game:declineDraw', { gameId });
+    emitWhenReady('game:declineDraw', { gameId });
   },
 };

@@ -1,6 +1,6 @@
 // src/hooks/useChallenge.ts
 import { useEffect, useCallback } from 'react';
-import { getSocket } from '@/socket/socket';
+import { getSocket, onSocketReady } from '@/socket/socket';
 import { challengeSocketService } from '@/socket/challengeSocketService';
 import { useNotificationStore } from '@/store/notificationStore';
 import {
@@ -48,53 +48,63 @@ export function useChallenge(): UseChallengeReturn {
   // ─── Socket event listeners ────────────────────────────────────────────────
 
   useEffect(() => {
-    const socket = getSocket();
-    console.log('useChallenge mounted', !!socket);
-    console.log(socket?.listeners?.('challenge:received'));
-    if (!socket) {
-      console.warn('useChallenge: socket not available, skipping listeners');
-      return;
-    }
+    let cleanupListeners: (() => void) | null = null;
 
-    const onChallengeSent = (payload: ChallengeSentEvent) => {
-      setOutgoingChallenge(payload);
-    };
-    const onChallengeReceived = (payload: ChallengeReceivedEvent) => {
-      console.log("Received challenge:", payload);
-      addIncomingChallenge(payload);
+    const setupListeners = () => {
+      const socket = getSocket();
+      if (!socket) return; // defensive; shouldn't happen once called from onSocketReady
 
-      pushToast({
-        kind: 'challenge',
-        challengeId: payload.challengeId,
-        fromUsername: payload.fromUsername,
-        fromDisplayName: payload.fromDisplayName,
-      });
-    };
-    const onChallengeAccepted = (payload: ChallengeAcceptedEvent) => {
-      clearOutgoingChallenge();
-      removeIncomingChallenge(payload.challengeId);
-      setAcceptedGameId(payload.gameId);
-    };
-    const onChallengeEnded = (payload: ChallengeEndedEvent) => {
-      clearOutgoingChallenge();
-      removeIncomingChallenge(payload.challengeId);
-    };
-    const onChallengeError = (message: string) => {
-      setError(message);
+      const onChallengeSent = (payload: ChallengeSentEvent) => {
+        setOutgoingChallenge(payload);
+      };
+      const onChallengeReceived = (payload: ChallengeReceivedEvent) => {
+        console.log('Received challenge:', payload);
+        addIncomingChallenge(payload);
+
+        pushToast({
+          kind: 'challenge',
+          challengeId: payload.challengeId,
+          fromUsername: payload.fromUsername,
+          fromDisplayName: payload.fromDisplayName,
+        });
+      };
+      const onChallengeAccepted = (payload: ChallengeAcceptedEvent) => {
+        clearOutgoingChallenge();
+        removeIncomingChallenge(payload.challengeId);
+        setAcceptedGameId(payload.gameId);
+      };
+      const onChallengeEnded = (payload: ChallengeEndedEvent) => {
+        clearOutgoingChallenge();
+        removeIncomingChallenge(payload.challengeId);
+      };
+      const onChallengeError = (message: string) => {
+        setError(message);
+      };
+
+      socket.on('challenge:sent', onChallengeSent);
+      socket.on('challenge:received', onChallengeReceived);
+      socket.on('challenge:accepted', onChallengeAccepted);
+      socket.on('challenge:ended', onChallengeEnded);
+      socket.on('challenge:error', onChallengeError);
+
+      cleanupListeners = () => {
+        socket.off('challenge:sent', onChallengeSent);
+        socket.off('challenge:received', onChallengeReceived);
+        socket.off('challenge:accepted', onChallengeAccepted);
+        socket.off('challenge:ended', onChallengeEnded);
+        socket.off('challenge:error', onChallengeError);
+      };
     };
 
-    socket.on('challenge:sent', onChallengeSent);
-    socket.on('challenge:received', onChallengeReceived);
-    socket.on('challenge:accepted', onChallengeAccepted);
-    socket.on('challenge:ended', onChallengeEnded);
-    socket.on('challenge:error', onChallengeError);
+    let unsubscribeReady: (() => void) | null = null;
+
+    
+    unsubscribeReady = onSocketReady(setupListeners); // call back to remove setupListeners callback from queue in socket.ts on unmount
+    
 
     return () => {
-      socket.off('challenge:sent', onChallengeSent);
-      socket.off('challenge:received', onChallengeReceived);
-      socket.off('challenge:accepted', onChallengeAccepted);
-      socket.off('challenge:ended', onChallengeEnded);
-      socket.off('challenge:error', onChallengeError);
+      unsubscribeReady?.();
+      cleanupListeners?.();
     };
   }, [
     setOutgoingChallenge,
