@@ -9,6 +9,7 @@ import com.chessy.chess_backend.mapper.GameMapper;
 import com.chessy.chess_backend.mapper.MoveMapper;
 import com.chessy.chess_backend.repository.GameRepository;
 import com.chessy.chess_backend.repository.UserRepository;
+import com.github.bhlangonijr.chesslib.move.MoveGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -122,7 +123,8 @@ public class GameService {
                 : Piece.NONE;
         Move candidateMove = new Move(from, to, promotionPiece);
 
-        if (!board.isMoveLegal(candidateMove, true)) {
+        List<Move> legalMoves = MoveGenerator.generateLegalMoves(board);
+        if (!legalMoves.contains(candidateMove)) {
             throw new IllegalMoveException();
         }
 
