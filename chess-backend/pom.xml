@@ -148,6 +148,16 @@
 			<version>2.0.13</version>
 		</dependency>
 
+		<!-- chess -->
+
+		<dependency>
+			<groupId>com.github.bhlangonijr</groupId>
+			<artifactId>chesslib</artifactId>
+			<version>1.3.7</version>
+		</dependency>
+
+		<!-- Tesing -->
+
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>

@@ -161,7 +161,7 @@ public class ChallengeSocketController {
             blackId = challengerIsWhite ? claimed.getChallengedId() : claimed.getChallengerId();
         }
 
-        CreateGameResponseDto game = gameService.createGame(whiteId, blackId);
+        CreateGameResponseDto game = gameService.createGame(whiteId, blackId); // game state is set to In-progress on creation
         String gameId = game.getGameId().toString();
 
         ChallengeAcceptedEvent event = new ChallengeAcceptedEvent(claimed.getId().toString(), gameId);

@@ -1,0 +1,4 @@
+
+
+ALTER TABLE games
+    ADD COLUMN winner UUID REFERENCES users(id) ON DELETE SET NULL;

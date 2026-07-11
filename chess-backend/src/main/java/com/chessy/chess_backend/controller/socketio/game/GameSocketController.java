@@ -6,7 +6,10 @@ import com.chessy.chess_backend.controller.socketio.game.payload.JoinGamePayload
 import com.chessy.chess_backend.controller.socketio.game.payload.LeaveGamePayload;
 import com.chessy.chess_backend.controller.socketio.game.payload.MovePayload;
 import com.chessy.chess_backend.dto.GameDto;
+import com.chessy.chess_backend.dto.GameMoveResult;
+import com.chessy.chess_backend.dto.MoveDto;
 import com.chessy.chess_backend.entity.Game;
+import com.chessy.chess_backend.exception.*;
 import com.chessy.chess_backend.service.GameService;
 import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
@@ -15,10 +18,19 @@ import com.corundumstudio.socketio.annotation.OnEvent;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Component;
 
+
+import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 
 @Component
 public class GameSocketController {
+
+    //TODO: broadcast to users not gameID
+    //TODO: complete resign/draw..etc methods
+    //TODO: consider joining room with GameID?
+    //TODO: create schedular to kill games with expired timers
+    
 
     private final SocketIOServer server;
     private final GameService gameService;
@@ -36,19 +48,36 @@ public class GameSocketController {
 
     @OnEvent("game:join")
     public void onJoinGame(SocketIOClient client, JoinGamePayload payload) {
+        // used to show other user if user is connected? TODO
+    }
+
+    @OnEvent("game:move")
+    public void onMove(SocketIOClient client, MovePayload payload) {
         UUID userId = requireAuth(client);
         if (userId == null) return;
 
-        String gameId = payload.getGameId();
-        client.joinRoom(gameId);
+        UUID gameId = UUID.fromString(payload.getGameId());
+        GameMoveResult result;
+        try {
+            result = gameService.applyMove(gameId, userId, payload);
+        } catch (GameNotFoundException | IllegalMoveException | MoveNotationException | NotYourTurnException |
+                 NotAParticipantException | IllegalGameStateException e) {
+            client.sendEvent("game:error", e.getMessage());
+            return;
+        }
 
-        GameDto startedGame = gameService.startGame(UUID.fromString(gameId));
 
-        client.sendEvent("game:loaded",
-                new GameLoadedEvent(startedGame.getCurrentFen(),
-                        startedGame.getWhiteTimeRemainingMs(),
-                        startedGame.getBlackTimeRemainingMs())
-        );
+        UUID whitePlayerId = result.getGame().getWhitePlayer().getId();
+        UUID blackPlayerId = result.getGame().getBlackPlayer().getId();
+
+
+        server.getRoomOperations("user:" + whitePlayerId.toString()).sendEvent("game:moveApplied", result.getMoveEvent());
+        server.getRoomOperations("user:" + blackPlayerId.toString()).sendEvent("game:moveApplied", result.getMoveEvent());
+        System.out.println("fired moveApplied Event: " + result.getMoveEvent());
+        if (result.getEndResult() != null) {
+            server.getRoomOperations("user:" + whitePlayerId.toString()).sendEvent("game:ended", result.getEndResult());
+            server.getRoomOperations("user:" + blackPlayerId.toString()).sendEvent("game:ended", result.getEndResult());
+        }
     }
 
     @OnEvent("game:leave")
@@ -59,38 +88,7 @@ public class GameSocketController {
         client.leaveRoom(payload.getGameId());
     }
 
-    @OnEvent("game:move")
-    public void onMove(SocketIOClient client, MovePayload payload) {
-        UUID userId = requireAuth(client);
-        if (userId == null) return;
 
-        String gameId = payload.getGameId();
-
-        // TODO: validate move against game state/engine, confirm userId is a player in this game and it's their turn
-        boolean isValid = true; // placeholder
-
-        if (!isValid) {
-            client.sendEvent("game:error", "Illegal move");
-            return;
-        }
-
-        // TODO: apply move, persist state, recompute clocks
-        String newFen = "..."; // placeholder
-        long whiteTimeRemainingMs = 0;
-        long blackTimeRemainingMs = 0;
-
-        MoveAppliedEvent event = new MoveAppliedEvent(
-                gameId,
-                new MoveAppliedEvent.MoveDetail(payload.getFrom(), payload.getTo(), payload.getPromotion()),
-                newFen,
-                whiteTimeRemainingMs,
-                blackTimeRemainingMs
-        );
-
-        server.getRoomOperations(gameId).sendEvent("game:moveApplied", event);
-
-        // TODO: check for checkmate/stalemate/draw and emit game:ended if applicable
-    }
 
     @OnEvent("game:resign")
     public void onResign(SocketIOClient client, GameActionPayload payload) {
@@ -162,4 +160,8 @@ public class GameSocketController {
         }
         return userId;
     }
+
+
+
+
 }

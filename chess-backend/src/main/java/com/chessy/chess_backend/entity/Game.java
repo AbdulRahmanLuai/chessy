@@ -76,6 +76,9 @@ public class Game {
     @Column(name = "finished_at")
     private Instant finishedAt;
 
+    @Column(name = "winner")
+    private UUID winner;
+
     @PrePersist
     void onCreate() {
         createdAt = Instant.now();
