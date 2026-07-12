@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -15,4 +16,5 @@ public interface GameRepository extends JpaRepository<Game, UUID> {
             "WHERE (g.whitePlayer.id = :userId OR g.blackPlayer.id = :userId) " +
             "AND g.status IN ('WAITING', 'IN_PROGRESS')")
     boolean hasActiveGame(@Param("userId") UUID userId);
+    List<Game> findByStatus(Game.GameStatus status);
 }

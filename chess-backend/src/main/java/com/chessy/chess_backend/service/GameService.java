@@ -4,6 +4,8 @@ import com.chessy.chess_backend.controller.socketio.game.event.MoveAppliedEvent;
 import com.chessy.chess_backend.controller.socketio.game.payload.MovePayload;
 import com.chessy.chess_backend.dto.*;
 import com.chessy.chess_backend.entity.Game;
+import com.chessy.chess_backend.event.GameDeadlineScheduledEvent;
+import com.chessy.chess_backend.event.GameFinishedEvent;
 import com.chessy.chess_backend.exception.*;
 import com.chessy.chess_backend.mapper.GameMapper;
 import com.chessy.chess_backend.mapper.MoveMapper;
@@ -11,6 +13,7 @@ import com.chessy.chess_backend.repository.GameRepository;
 import com.chessy.chess_backend.repository.UserRepository;
 import com.github.bhlangonijr.chesslib.move.MoveGenerator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +26,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -33,6 +37,7 @@ public class GameService {
     private final GameMapper gameMapper;
     private final MoveMapper moveMapper;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public CreateGameResponseDto createGame(UUID whitePlayerId, UUID blackPlayerId) {
         Game game = Game.builder()
@@ -41,10 +46,10 @@ public class GameService {
                 .status(Game.GameStatus.IN_PROGRESS)
                 .currentFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
                 .moves(new ArrayList<>())
-                .timeInitialSeconds(600)
-                .timeIncrementSeconds(0)
-                .whiteTimeRemainingMs(600_000L)
-                .blackTimeRemainingMs(600_000L)
+                .timeInitialSeconds(30)
+                .timeIncrementSeconds(1)
+                .whiteTimeRemainingMs(30_000L)
+                .blackTimeRemainingMs(30_000L)
                 .build();
 
         Game saved = gameRepository.save(game);
@@ -167,6 +172,7 @@ public class GameService {
             endResult = endGame(game, "draw", null, GameResultReason.FIFTY_MOVE_RULE);
         } else {
             game = gameRepository.save(game);
+            eventPublisher.publishEvent(new GameDeadlineScheduledEvent(game.getId(), game.getCurrentPlayerDeadlineAt()));
         }
 
         MoveAppliedEvent event = new MoveAppliedEvent(
@@ -220,13 +226,17 @@ public class GameService {
 
     public GameEndResult endGame(Game game, String result, UUID winnerId, GameResultReason resultReason) {
         Instant now = Instant.now();
-        game.setStatus(Game.GameStatus.COMPLETED);
+        game.setStatus(resultReason == GameResultReason.ABORTED
+                ? Game.GameStatus.ABORTED
+                : Game.GameStatus.COMPLETED);
         game.setResult(result);
         game.setResultReason(resultReason.toString());
         game.setWinner(winnerId);
         game.setFinishedAt(now);
 
         game = gameRepository.save(game);
+
+        eventPublisher.publishEvent(new GameFinishedEvent(game.getId()));
 
         return new GameEndResult(game.getId(), result, resultReason, winnerId, now);
     }
@@ -266,16 +276,7 @@ public class GameService {
             throw new IllegalGameStateException("Game can no longer be aborted");
         }
 
-        Instant now = Instant.now();
-        game.setStatus(Game.GameStatus.ABORTED);
-        game.setResult("aborted");
-        game.setResultReason("abort");
-        game.setWinner(null);
-        game.setFinishedAt(now);
-
-        game = gameRepository.save(game);
-
-        return new GameEndResult(game.getId(), "aborted", GameResultReason.ABORTED, null, now);
+        return endGame(game, "aborted", null, GameResultReason.ABORTED);
     }
 
     public void validateActiveParticipant(UUID gameId, UUID userId) {
@@ -310,6 +311,22 @@ public class GameService {
 
         game.setPendingDrawOfferedBy(null);
         return endGame(game, "1/2-1/2", null, GameResultReason.DRAW_AGREEMENT);
+    }
+
+    /**
+     * Scheduler-facing counterpart to the expiry check in loadActiveParticipant.
+     * Called by GameTimeoutScheduler when a per-game scheduled task fires, i.e.
+     * with no requesting user/action. Returns empty if the game is no longer
+     * IN_PROGRESS or hasn't actually expired (e.g. a later move pushed the
+     * deadline forward before this task ran).
+     */
+    @Transactional
+    public Optional<GameEndResult> timeoutIfExpired(UUID gameId) {
+        Game game = gameRepository.findById(gameId).orElse(null);
+        if (game == null || game.getStatus() != Game.GameStatus.IN_PROGRESS || !isExpired(game)) {
+            return Optional.empty();
+        }
+        return Optional.of(timeoutGame(game));
     }
 
     private record ParticipantContext(Game game, boolean isWhite, boolean isBlack) {

@@ -27,17 +27,17 @@ import java.util.UUID;
 public class GameSocketController {
 
     //TODO: consider joining room with GameID?
-    //TODO: create schedular to kill games with expired timers.
-    //TODO: avoid roundtrips to db for extracting player ids.
     //TODO: handle race condition issues.
 
 
     private final SocketIOServer server;
     private final GameService gameService;
+    private final GameEventBroadcaster broadcaster;
 
-    public GameSocketController(SocketIOServer server, GameService gameService) {
+    public GameSocketController(SocketIOServer server, GameService gameService, GameEventBroadcaster broadcaster) {
         this.server = server;
         this.gameService = gameService;
+        this.broadcaster = broadcaster;
     }
 
     @PostConstruct
@@ -53,11 +53,7 @@ public class GameSocketController {
         UUID gameId = UUID.fromString(payload.getGameId());
         if (!validateParticipantOrError(client, gameId, userId)) return;
 
-        // TODO: avoid round trip, validateActiveParticipant could return player IDs directly
-        PlayerIds players = getPlayerIds(gameId);
-
-        UserJoinedEvent event = new UserJoinedEvent(gameId.toString(), userId.toString());
-        sendToPlayers(players, "game:userJoined", event);
+        broadcaster.broadcastUserJoined(gameId, userId);
     }
 
     @OnEvent("game:leave")
@@ -68,11 +64,7 @@ public class GameSocketController {
         UUID gameId = UUID.fromString(payload.getGameId());
         if (!validateParticipantOrError(client, gameId, userId)) return;
 
-        // TODO: avoid round trip, validateActiveParticipant could return player IDs directly
-        PlayerIds players = getPlayerIds(gameId);
-
-        UserLeftEvent event = new UserLeftEvent(gameId.toString(), userId.toString());
-        sendToPlayers(players, "game:userLeft", event);
+        broadcaster.broadcastUserLeft(gameId, userId);
     }
 
     @OnEvent("game:move")
@@ -93,13 +85,7 @@ public class GameSocketController {
             return;
         }
 
-        PlayerIds players = getPlayerIds(result.getGame());
-
-        sendToPlayers(players, "game:moveApplied", result.getMoveEvent());
-        System.out.println("fired moveApplied Event: " + result.getMoveEvent());
-        if (result.getEndResult() != null) {
-            sendToPlayers(players, "game:ended", result.getEndResult());
-        }
+        broadcaster.broadcastMoveApplied(result);
     }
 
     @OnEvent("game:resign")
@@ -119,11 +105,7 @@ public class GameSocketController {
             return;
         }
 
-        // TODO: avoid round trip, resignGame could return player IDs directly
-        PlayerIds players = getPlayerIds(gameId);
-
-        GameEndedEvent event = toGameEndedEvent(endResult);
-        sendToPlayers(players, "game:ended", event);
+        broadcaster.broadcastGameEnded(endResult);
     }
 
     @OnEvent("game:abort")
@@ -143,11 +125,7 @@ public class GameSocketController {
             return;
         }
 
-        // TODO: avoid round trip, abortGame could return player IDs directly
-        PlayerIds players = getPlayerIds(gameId);
-
-        GameEndedEvent event = toGameEndedEvent(endResult);
-        sendToPlayers(players, "game:ended", event);
+        broadcaster.broadcastGameEnded(endResult);
     }
 
     @OnEvent("game:offerDraw")
@@ -159,12 +137,8 @@ public class GameSocketController {
         UUID gameId = UUID.fromString(payload.getGameId());
         if (!validateParticipantOrError(client, gameId, userId)) return;
 
-        // TODO: avoid round trip, validateActiveParticipant could return player IDs directly
         gameService.offerDraw(gameId, userId);
-        PlayerIds players = getPlayerIds(gameId);
-
-        DrawOfferedEvent event = new DrawOfferedEvent(userId.toString());
-        sendToPlayers(players, "game:drawOffered", event);
+        broadcaster.broadcastDrawOffered(gameId, userId);
     }
 
     @OnEvent("game:acceptDraw")
@@ -184,19 +158,7 @@ public class GameSocketController {
             return;
         }
 
-        // TODO: avoid round trip, acceptDraw could return player IDs directly
-        PlayerIds players = getPlayerIds(gameId);
-
-        GameIdEvent acceptedEvent = new GameIdEvent(gameId.toString());
-        GameEndedEvent endedEvent = new GameEndedEvent(
-                gameId.toString(),
-                endResult.getResult(),
-                endResult.getWinner() == null ? "DRAW" : endResult.getWinner().toString(),
-                endResult.getResultReason().toString()
-        );
-
-        sendToPlayers(players, "game:drawAccepted", acceptedEvent);
-        sendToPlayers(players, "game:ended", endedEvent);
+        broadcaster.broadcastDrawAccepted(gameId, endResult);
     }
 
     @OnEvent("game:declineDraw")
@@ -208,11 +170,7 @@ public class GameSocketController {
         if (!validateParticipantOrError(client, gameId, userId)) return;
 
         gameService.declineDraw(gameId, userId);
-        // TODO: avoid round trip, validateActiveParticipant could return player IDs directly
-        PlayerIds players = getPlayerIds(gameId);
-
-        GameIdEvent event = new GameIdEvent(gameId.toString());
-        sendToPlayers(players, "game:declineDraw", event);
+        broadcaster.broadcastDrawDeclined(gameId);
     }
 
     private UUID requireAuth(SocketIOClient client) {
@@ -239,36 +197,7 @@ public class GameSocketController {
 
     private void handleTimeout(SocketIOClient client, GameTimedOutException e) {
         client.sendEvent("game:error", e.getMessage());
-
-        GameEndResult endResult = e.getEndResult();
-        PlayerIds players = getPlayerIds(endResult.getGameId());
-        GameEndedEvent event = toGameEndedEvent(endResult);
-        sendToPlayers(players, "game:ended", event);
-    }
-
-    private GameEndedEvent toGameEndedEvent(GameEndResult endResult) {
-        return new GameEndedEvent(
-                endResult.getGameId().toString(),
-                endResult.getResult(),
-                endResult.getWinner() == null ? null : endResult.getWinner().toString(),
-                endResult.getResultReason().toString()
-        );
-    }
-
-    private record PlayerIds(UUID white, UUID black) {}
-
-    private PlayerIds getPlayerIds(GameDto game) {
-        return new PlayerIds(game.getWhitePlayer().getId(), game.getBlackPlayer().getId());
-    }
-
-    private PlayerIds getPlayerIds(UUID gameId) {
-        return getPlayerIds(gameService.getGame(gameId));
-    }
-
-
-    private void sendToPlayers(PlayerIds players, String eventName, Object event) {
-        server.getRoomOperations("user:" + players.white().toString()).sendEvent(eventName, event);
-        server.getRoomOperations("user:" + players.black().toString()).sendEvent(eventName, event);
+        broadcaster.broadcastGameEnded(e.getEndResult());
     }
 
 }
