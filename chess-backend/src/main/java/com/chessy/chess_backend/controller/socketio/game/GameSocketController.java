@@ -84,6 +84,9 @@ public class GameSocketController {
         GameMoveResult result;
         try {
             result = gameService.applyMove(gameId, userId, payload);
+        } catch (GameTimedOutException e) {
+            handleTimeout(client, e);
+            return;
         } catch (GameNotFoundException | IllegalMoveException | MoveNotationException | NotYourTurnException |
                  NotAParticipantException | IllegalGameStateException e) {
             client.sendEvent("game:error", e.getMessage());
@@ -108,6 +111,9 @@ public class GameSocketController {
         GameEndResult endResult;
         try {
             endResult = gameService.resignGame(gameId, userId);
+        } catch (GameTimedOutException e) {
+            handleTimeout(client, e);
+            return;
         } catch (GameNotFoundException | NotAParticipantException | IllegalGameStateException e) {
             client.sendEvent("game:error", e.getMessage());
             return;
@@ -116,12 +122,7 @@ public class GameSocketController {
         // TODO: avoid round trip, resignGame could return player IDs directly
         PlayerIds players = getPlayerIds(gameId);
 
-        GameEndedEvent event = new GameEndedEvent(
-                gameId.toString(),
-                endResult.getResult(),
-                endResult.getWinner() == null ? null : endResult.getWinner().toString(),
-                endResult.getResultReason().toString()
-        );
+        GameEndedEvent event = toGameEndedEvent(endResult);
         sendToPlayers(players, "game:ended", event);
     }
 
@@ -134,6 +135,9 @@ public class GameSocketController {
         GameEndResult endResult;
         try {
             endResult = gameService.abortGame(gameId, userId);
+        } catch (GameTimedOutException e) {
+            handleTimeout(client, e);
+            return;
         } catch (GameNotFoundException | NotAParticipantException | IllegalGameStateException e) {
             client.sendEvent("game:error", e.getMessage());
             return;
@@ -142,12 +146,7 @@ public class GameSocketController {
         // TODO: avoid round trip, abortGame could return player IDs directly
         PlayerIds players = getPlayerIds(gameId);
 
-        GameEndedEvent event = new GameEndedEvent(
-                gameId.toString(),
-                endResult.getResult(),
-                endResult.getWinner() == null ? null : endResult.getWinner().toString(),
-                endResult.getResultReason().toString()
-        );
+        GameEndedEvent event = toGameEndedEvent(endResult);
         sendToPlayers(players, "game:ended", event);
     }
 
@@ -177,6 +176,9 @@ public class GameSocketController {
         GameEndResult endResult;
         try {
             endResult = gameService.acceptDraw(gameId, userId);
+        } catch (GameTimedOutException e) {
+            handleTimeout(client, e);
+            return;
         } catch (GameNotFoundException | NotAParticipantException | IllegalGameStateException e) {
             client.sendEvent("game:error", e.getMessage());
             return;
@@ -226,10 +228,31 @@ public class GameSocketController {
         try {
             gameService.validateActiveParticipant(gameId, userId);
             return true;
+        } catch (GameTimedOutException e) {
+            handleTimeout(client, e);
+            return false;
         } catch (GameNotFoundException | NotAParticipantException | IllegalGameStateException e) {
             client.sendEvent("game:error", e.getMessage());
             return false;
         }
+    }
+
+    private void handleTimeout(SocketIOClient client, GameTimedOutException e) {
+        client.sendEvent("game:error", e.getMessage());
+
+        GameEndResult endResult = e.getEndResult();
+        PlayerIds players = getPlayerIds(endResult.getGameId());
+        GameEndedEvent event = toGameEndedEvent(endResult);
+        sendToPlayers(players, "game:ended", event);
+    }
+
+    private GameEndedEvent toGameEndedEvent(GameEndResult endResult) {
+        return new GameEndedEvent(
+                endResult.getGameId().toString(),
+                endResult.getResult(),
+                endResult.getWinner() == null ? null : endResult.getWinner().toString(),
+                endResult.getResultReason().toString()
+        );
     }
 
     private record PlayerIds(UUID white, UUID black) {}

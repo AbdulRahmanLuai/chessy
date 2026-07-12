@@ -74,7 +74,7 @@ public class GameService {
                 .build();
     }
 
-    public Boolean hasActiveGame(UUID userId){
+    public Boolean hasActiveGame(UUID userId) {
         return gameRepository.hasActiveGame(userId);
     }
 
@@ -198,10 +198,14 @@ public class GameService {
             return null;
         }
         switch (promotion.toLowerCase()) {
-            case "q": return PieceType.QUEEN;
-            case "r": return PieceType.ROOK;
-            case "b": return PieceType.BISHOP;
-            case "n": return PieceType.KNIGHT;
+            case "q":
+                return PieceType.QUEEN;
+            case "r":
+                return PieceType.ROOK;
+            case "b":
+                return PieceType.BISHOP;
+            case "n":
+                return PieceType.KNIGHT;
             default:
                 throw new IllegalArgumentException("Invalid promotion piece: " + promotion);
         }
@@ -209,7 +213,7 @@ public class GameService {
 
     private long updateTimeRemaining(long timeRemaining, Game game, Instant now) {
         Instant lastMoveAt = game.getLastMoveAt();
-        long elapsedMs = (lastMoveAt != null)? Duration.between(lastMoveAt, now).toMillis(): 0L;
+        long elapsedMs = (lastMoveAt != null) ? Duration.between(lastMoveAt, now).toMillis() : 0L;
         long incrementMs = game.getTimeIncrementSeconds() * 1000L;
         return Math.max(0L, timeRemaining - elapsedMs + incrementMs);
     }
@@ -308,7 +312,8 @@ public class GameService {
         return endGame(game, "1/2-1/2", null, GameResultReason.DRAW_AGREEMENT);
     }
 
-    private record ParticipantContext(Game game, boolean isWhite, boolean isBlack) {}
+    private record ParticipantContext(Game game, boolean isWhite, boolean isBlack) {
+    }
 
     private ParticipantContext loadActiveParticipant(UUID gameId, UUID userId) {
         Game game = gameRepository.findById(gameId)
@@ -316,6 +321,11 @@ public class GameService {
 
         if (game.getStatus() != Game.GameStatus.IN_PROGRESS) {
             throw new IllegalGameStateException("Game is not in progress");
+        }
+
+        if (isExpired(game)) {
+            GameEndResult endResult = timeoutGame(game);
+            throw new GameTimedOutException(endResult);
         }
 
         boolean isWhite = game.getWhitePlayer() != null && userId.equals(game.getWhitePlayer().getId());
@@ -326,4 +336,17 @@ public class GameService {
 
         return new ParticipantContext(game, isWhite, isBlack);
     }
+
+    private boolean isExpired(Game game) {
+        Instant deadline = game.getCurrentPlayerDeadlineAt();
+        return deadline != null && Instant.now().isAfter(deadline);
+    }
+
+    private GameEndResult timeoutGame(Game game) {
+        boolean whiteToMove = game.getMoves().size() % 2 == 0;
+        UUID winnerId = whiteToMove ? game.getBlackPlayer().getId() : game.getWhitePlayer().getId();
+        String result = whiteToMove ? "0-1" : "1-0";
+        return endGame(game, result, winnerId, GameResultReason.TIMEOUT);
+    }
+
 }
