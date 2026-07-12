@@ -14,6 +14,7 @@ import { useGameStore }  from '@/store/gameStore';
 import { useGame }       from '@/hooks/useGame';
 import type { Color, GamePlayer, Square } from '@/types';
 import styles from './GameRoom.module.css';
+import { Chess } from 'chess.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,12 +32,13 @@ function getTurnFromFen(fen: string): Color {
 /** Returns the square of the active king if it is in check, otherwise null. */
 function findCheckSquare(fen: string): Square | null {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { Chess } = require('chess.js') as typeof import('chess.js');
     const chess = new Chess(fen);
+
     if (!chess.inCheck()) return null;
-    const turn  = chess.turn(); // 'w' | 'b'
+
+    const turn = chess.turn(); // 'w' | 'b'
     const board = chess.board();
+
     for (const row of board) {
       for (const cell of row) {
         if (cell && cell.type === 'k' && cell.color === turn) {
@@ -47,6 +49,7 @@ function findCheckSquare(fen: string): Square | null {
   } catch {
     // Malformed FEN — skip highlight
   }
+
   return null;
 }
 
@@ -160,6 +163,7 @@ export default function GameRoom({ gameId }: GameRoomProps) {
   if (game.status === 'WAITING' || !blackGamePlayer || !whiteGamePlayer) {
     return (
       <div className={styles.loadingState}>
+        <div>{game.status} {game.whitePlayer?.username} vs {game.blackPlayer?.username}</div>
         <Spinner size="lg" label="Waiting for opponent…" />
       </div>
     );

@@ -57,6 +57,7 @@ export function useGame(gameId: string): UseGameReturn {
       setGame(game);
     };
     loadGame();
+    console.log('Joining game room', gameId);
 
     gameSocketService.join(gameId);
     setLoading(false);
@@ -81,6 +82,7 @@ export function useGame(gameId: string): UseGameReturn {
 
       // move applied from server (authoritative)
       const onMoveApplied = (payload: any) => {
+        console.log('Move applied from server', payload);
         applyMove(
           payload.move,
           payload.fen,
@@ -90,6 +92,7 @@ export function useGame(gameId: string): UseGameReturn {
       };
 
       const onDrawOffered = () => {
+        console.log("Draw offer received from opponent");
         setDrawOfferReceived(true);
       };
 
@@ -104,7 +107,12 @@ export function useGame(gameId: string): UseGameReturn {
       };
 
       const onGameEnded = (payload: any) => {
-        setResult('COMPLETED', payload.result, payload.reason);
+        console.log('Game ended from server', payload);
+        setResult(
+          'COMPLETED',
+          { winner: payload.winner, reason: payload.reason },
+          payload.reason,
+        );
       };
 
       socket.on('game:moveApplied', onMoveApplied);
@@ -112,8 +120,10 @@ export function useGame(gameId: string): UseGameReturn {
       socket.on('game:drawAccepted', onDrawAccepted);
       socket.on('game:drawDeclined', onDrawDeclined);
       socket.on('game:ended', onGameEnded);
+      console.log('Socket listeners set up for game', gameId);
 
       cleanupListeners = () => {
+        console.log('Cleaning up socket listeners for game', gameId);
         socket.off('game:moveApplied', onMoveApplied);
         socket.off('game:drawOffered', onDrawOffered);
         socket.off('game:drawAccepted', onDrawAccepted);

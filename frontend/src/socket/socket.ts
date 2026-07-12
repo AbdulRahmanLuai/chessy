@@ -19,8 +19,7 @@ export function connectSocket(token: string) {
   disconnectSocket();
 
   socket = io(SOCKET_URL, {
-    auth: { token },
-    query: { token },
+    auth: { token: token },
     autoConnect: true,
   });
 

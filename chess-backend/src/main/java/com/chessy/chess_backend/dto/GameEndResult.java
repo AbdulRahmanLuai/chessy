@@ -9,8 +9,8 @@ import java.util.UUID;
 @AllArgsConstructor
 public class GameEndResult {
     private UUID gameId;
-    private String result;       // "checkmate", "draw", etc.
-    private String resultReason; // "checkmate", "stalemate", "threefold_repetition", ...
-    private UUID winner;         // null for draws
+    private String result;
+    private GameResultReason resultReason;
+    private UUID winner;
     private Instant finishedAt;
 }

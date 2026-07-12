@@ -1,7 +1,6 @@
-import { useEffect, useRef, useMemo } from 'react';
 import type { Move } from '@/types';
 import styles from './MoveList.module.css';
-
+import { useEffect, useRef, useMemo, forwardRef } from 'react';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface MoveListProps {
@@ -151,46 +150,43 @@ interface MoveCellProps {
   isActive: boolean;
   isInteractive: boolean;
   onClick?: (index: number) => void;
-  ref: React.Ref<HTMLButtonElement> | null;
+  // ref removed from here
 }
 
-const MoveCell = ({
-  san,
-  index,
-  isActive,
-  isInteractive,
-  onClick,
-  ref,
-}: MoveCellProps) => {
-  const cellClass = [
-    styles.moveCell,
-    isActive ? styles.activeMove : '',
-    isInteractive ? styles.interactive : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
+const MoveCell = forwardRef<HTMLButtonElement | HTMLSpanElement, MoveCellProps>(
+  ({ san, index, isActive, isInteractive, onClick }, ref) => {
+    const cellClass = [
+      styles.moveCell,
+      isActive ? styles.activeMove : '',
+      isInteractive ? styles.interactive : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
 
-  if (isInteractive && onClick) {
+    if (isInteractive && onClick) {
+      return (
+        <button
+          ref={ref as React.Ref<HTMLButtonElement>}
+          className={cellClass}
+          onClick={() => onClick(index)}
+          aria-current={isActive ? 'true' : undefined}
+          aria-label={`Move ${index + 1}: ${san}`}
+        >
+          {san}
+        </button>
+      );
+    }
+
     return (
-      <button
-        ref={ref}
+      <span
+        ref={ref as React.Ref<HTMLSpanElement>}
         className={cellClass}
-        onClick={() => onClick(index)}
         aria-current={isActive ? 'true' : undefined}
-        aria-label={`Move ${index + 1}: ${san}`}
       >
         {san}
-      </button>
+      </span>
     );
   }
+);
 
-  return (
-    <span
-      ref={ref as React.Ref<HTMLSpanElement>}
-      className={cellClass}
-      aria-current={isActive ? 'true' : undefined}
-    >
-      {san}
-    </span>
-  );
-};
+MoveCell.displayName = 'MoveCell';

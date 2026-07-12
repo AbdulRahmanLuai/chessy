@@ -79,6 +79,9 @@ public class Game {
     @Column(name = "winner")
     private UUID winner;
 
+    @Column(name = "pending_draw_offered_by")
+    private UUID pendingDrawOfferedBy;
+
     @PrePersist
     void onCreate() {
         createdAt = Instant.now();

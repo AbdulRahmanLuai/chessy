@@ -34,7 +34,6 @@ public class GameService {
     private final MoveMapper moveMapper;
     private final UserRepository userRepository;
 
-
     public CreateGameResponseDto createGame(UUID whitePlayerId, UUID blackPlayerId) {
         Game game = Game.builder()
                 .whitePlayer(userRepository.getById(whitePlayerId))
@@ -55,6 +54,7 @@ public class GameService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
     public GameDto getGame(UUID gameId) {
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new RuntimeException("Game not found"));
@@ -88,26 +88,19 @@ public class GameService {
 
         return gameMapper.toDto(game);
     }
+
     @Transactional
     public GameMoveResult applyMove(UUID gameId, UUID userId, MovePayload payload) {
-        Game game = gameRepository.findById(gameId)
-                .orElseThrow(() -> new GameNotFoundException(gameId));
-
-        if (game.getStatus() != Game.GameStatus.IN_PROGRESS) {
-            throw new IllegalGameStateException("Game is not in progress");
-        }
-
-        boolean isWhite = game.getWhitePlayer() != null && userId.equals(game.getWhitePlayer().getId());
-        boolean isBlack = game.getBlackPlayer() != null && userId.equals(game.getBlackPlayer().getId());
-        if (!isWhite && !isBlack) {
-            throw new NotAParticipantException();
-        }
+        ParticipantContext ctx = loadActiveParticipant(gameId, userId);
+        Game game = ctx.game();
+        boolean isWhite = ctx.isWhite();
+        boolean isBlack = ctx.isBlack();
 
         Board board = new Board();
-        MoveList moveList = new MoveList();
+//        MoveList moveList = new MoveList();
         for (Move historyMove : game.getMoves().stream().map(this::moveFromEntity).toList()) {
             board.doMove(historyMove);
-            moveList.add(historyMove);
+//            moveList.add(historyMove);
         }
 
         Side sideToMove = board.getSideToMove();
@@ -128,7 +121,8 @@ public class GameService {
             throw new IllegalMoveException();
         }
 
-        moveList.add(candidateMove);
+        MoveList moveList = new MoveList(board.getFen());
+        moveList.add(candidateMove); // movelist only contains last two states
         String san;
         try {
             String[] sanArray = moveList.toSanArray();
@@ -162,15 +156,15 @@ public class GameService {
         GameEndResult endResult = null;
         if (board.isMated()) {
             UUID winnerId = sideToMove.flip() == Side.WHITE ? game.getWhitePlayer().getId() : game.getBlackPlayer().getId(); // TODO: N+1?
-            endResult = endGame(game, "checkmate", winnerId, "checkmate");
+            endResult = endGame(game, "checkmate", winnerId, GameResultReason.CHECKMATE);
         } else if (board.isStaleMate()) {
-            endResult = endGame(game, "draw", null, "stalemate");
+            endResult = endGame(game, "draw", null, GameResultReason.STALEMATE);
         } else if (board.isRepetition()) {
-            endResult = endGame(game, "draw", null, "threefold_repetition");
+            endResult = endGame(game, "draw", null, GameResultReason.THREEFOLD_REPETITION);
         } else if (board.isInsufficientMaterial()) {
-            endResult = endGame(game, "draw", null, "insufficient_material");
+            endResult = endGame(game, "draw", null, GameResultReason.INSUFFICIENT_MATERIAL);
         } else if (board.getHalfMoveCounter() >= 100) {
-            endResult = endGame(game, "draw", null, "fifty_move_rule");
+            endResult = endGame(game, "draw", null, GameResultReason.FIFTY_MOVE_RULE);
         } else {
             game = gameRepository.save(game);
         }
@@ -220,11 +214,11 @@ public class GameService {
         return Math.max(0L, timeRemaining - elapsedMs + incrementMs);
     }
 
-    public GameEndResult endGame(Game game, String result, UUID winnerId, String resultReason) {
+    public GameEndResult endGame(Game game, String result, UUID winnerId, GameResultReason resultReason) {
         Instant now = Instant.now();
         game.setStatus(Game.GameStatus.COMPLETED);
         game.setResult(result);
-        game.setResultReason(resultReason);
+        game.setResultReason(resultReason.toString());
         game.setWinner(winnerId);
         game.setFinishedAt(now);
 
@@ -245,5 +239,91 @@ public class GameService {
         List<com.chessy.chess_backend.model.Move> updatedMoves = new ArrayList<>(game.getMoves());
         updatedMoves.add(move);
         game.setMoves(updatedMoves);
+    }
+
+    @Transactional
+    public GameEndResult resignGame(UUID gameId, UUID userId) {
+        ParticipantContext ctx = loadActiveParticipant(gameId, userId);
+        Game game = ctx.game();
+        boolean isWhite = ctx.isWhite();
+
+        UUID winnerId = isWhite ? game.getBlackPlayer().getId() : game.getWhitePlayer().getId();
+        String result = isWhite ? "0-1" : "1-0";
+
+        return endGame(game, result, winnerId, GameResultReason.RESIGNATION);
+    }
+
+    @Transactional
+    public GameEndResult abortGame(UUID gameId, UUID userId) {
+        ParticipantContext ctx = loadActiveParticipant(gameId, userId);
+        Game game = ctx.game();
+
+        if (game.getMoves().size() >= 2) {
+            throw new IllegalGameStateException("Game can no longer be aborted");
+        }
+
+        Instant now = Instant.now();
+        game.setStatus(Game.GameStatus.ABORTED);
+        game.setResult("aborted");
+        game.setResultReason("abort");
+        game.setWinner(null);
+        game.setFinishedAt(now);
+
+        game = gameRepository.save(game);
+
+        return new GameEndResult(game.getId(), "aborted", GameResultReason.ABORTED, null, now);
+    }
+
+    public void validateActiveParticipant(UUID gameId, UUID userId) {
+        loadActiveParticipant(gameId, userId);
+    }
+
+    @Transactional
+    public void offerDraw(UUID gameId, UUID userId) {
+        ParticipantContext ctx = loadActiveParticipant(gameId, userId);
+        Game game = ctx.game();
+        game.setPendingDrawOfferedBy(userId);
+        gameRepository.save(game);
+    }
+
+    @Transactional
+    public void declineDraw(UUID gameId, UUID userId) {
+        ParticipantContext ctx = loadActiveParticipant(gameId, userId);
+        Game game = ctx.game();
+        game.setPendingDrawOfferedBy(null);
+        gameRepository.save(game);
+    }
+
+    @Transactional
+    public GameEndResult acceptDraw(UUID gameId, UUID userId) {
+        ParticipantContext ctx = loadActiveParticipant(gameId, userId);
+        Game game = ctx.game();
+
+        UUID offeredBy = game.getPendingDrawOfferedBy();
+        if (offeredBy == null || offeredBy.equals(userId)) {
+            throw new IllegalGameStateException("No draw offer to accept");
+        }
+
+        game.setPendingDrawOfferedBy(null);
+        return endGame(game, "1/2-1/2", null, GameResultReason.DRAW_AGREEMENT);
+    }
+
+    private record ParticipantContext(Game game, boolean isWhite, boolean isBlack) {}
+
+    private ParticipantContext loadActiveParticipant(UUID gameId, UUID userId) {
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new GameNotFoundException(gameId));
+
+        if (game.getStatus() != Game.GameStatus.IN_PROGRESS) {
+            throw new IllegalGameStateException("Game is not in progress");
+        }
+
+        boolean isWhite = game.getWhitePlayer() != null && userId.equals(game.getWhitePlayer().getId());
+        boolean isBlack = game.getBlackPlayer() != null && userId.equals(game.getBlackPlayer().getId());
+        if (!isWhite && !isBlack) {
+            throw new NotAParticipantException();
+        }
+
+        return new ParticipantContext(game, isWhite, isBlack);
     }
 }

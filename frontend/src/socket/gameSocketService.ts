@@ -28,14 +28,17 @@ export const gameSocketService = {
   },
 
   offerDraw(gameId: string) {
+    console.log('Offering draw for game', gameId);
     emitWhenReady('game:offerDraw', { gameId });
   },
 
   acceptDraw(gameId: string) {
+    console.log('Accepting draw for game', gameId);
     emitWhenReady('game:acceptDraw', { gameId });
   },
 
   declineDraw(gameId: string) {
+    console.log('Declining draw for game', gameId);
     emitWhenReady('game:declineDraw', { gameId });
   },
 };

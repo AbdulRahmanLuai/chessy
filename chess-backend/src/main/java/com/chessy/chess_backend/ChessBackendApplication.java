@@ -9,5 +9,8 @@ public class ChessBackendApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(ChessBackendApplication.class, args);
 	}
+	
+
+
 
 }

@@ -1,7 +1,12 @@
 import { createPortal } from 'react-dom';
 import { Trophy, RotateCcw, LayoutDashboard, BarChart2 } from 'lucide-react';
 import Button from '@/components/ui/Button';
-import type { GameResult as GameResultType, GamePlayer, Color, GameStatus } from '@/types';
+import type {
+  GameResult as GameResultType,
+  GamePlayer,
+  Color,
+  ResultReason,
+} from '@/types';
 import styles from './GameResult.module.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -20,9 +25,23 @@ export interface GameResultProps {
 
 type Outcome = 'win' | 'loss' | 'draw';
 
-function getOutcome(winner: GameResultType['winner'], myColor: Color): Outcome {
-  if (winner === 'draw') return 'draw';
-  return winner === myColor ? 'win' : 'loss';
+function getPlayer(
+  players: [GamePlayer, GamePlayer],
+  color: Color,
+): GamePlayer {
+  return players[0].color === color ? players[0] : players[1];
+}
+
+function getOutcome(
+  winner: string | null,
+  myColor: Color,
+  players: [GamePlayer, GamePlayer],
+): Outcome {
+  console.log(winner);
+  if (winner === null || winner === 'DRAW') return 'draw';
+
+  const myPlayer = getPlayer(players, myColor);
+  return winner === myPlayer.user.id ? 'win' : 'loss';
 }
 
 const OUTCOME_LABEL: Record<Outcome, string> = {
@@ -31,22 +50,17 @@ const OUTCOME_LABEL: Record<Outcome, string> = {
   draw: 'Draw',
 };
 
-const REASON_LABEL: Partial<Record<GameStatus, string>> = {
-  checkmate: 'by checkmate',
-  timeout:   'on time',
-  resigned:  'by resignation',
-  stalemate: 'by stalemate',
-  draw:      'by agreement',
-  aborted:   'game aborted',
+const REASON_LABEL: Record<ResultReason, string> = {
+  CHECKMATE: 'by checkmate',
+  STALEMATE: 'by stalemate',
+  THREEFOLD_REPETITION: 'by threefold repetition',
+  INSUFFICIENT_MATERIAL: 'by insufficient material',
+  FIFTY_MOVE_RULE: 'by fifty-move rule',
+  TIMEOUT: 'on time',
+  RESIGNATION: 'by resignation',
+  DRAW_AGREEMENT: 'by agreement',
+  ABORTED: 'game aborted',
 };
-
-function getPlayer(
-  players: [GamePlayer, GamePlayer],
-  color: Color,
-): GamePlayer {
-  return players[0].color === color ? players[0] : players[1];
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function GameResult({
@@ -57,12 +71,12 @@ export default function GameResult({
   onReturnToLobby,
   onViewAnalysis,
 }: GameResultProps) {
-  const outcome     = getOutcome(result.winner, myColor);
+  const outcome     = getOutcome(result.winner, myColor, players);
   const whitePlayer = getPlayer(players, 'white');
   const blackPlayer = getPlayer(players, 'black');
 
-  const isWhiteWinner = result.winner === 'white';
-  const isBlackWinner = result.winner === 'black';
+  const isWhiteWinner = result.winner === whitePlayer.user.id;
+  const isBlackWinner = result.winner === blackPlayer.user.id;
 
   return createPortal(
     <div

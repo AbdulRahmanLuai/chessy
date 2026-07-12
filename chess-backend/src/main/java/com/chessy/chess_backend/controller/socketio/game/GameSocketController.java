@@ -6,6 +6,7 @@ import com.chessy.chess_backend.controller.socketio.game.payload.JoinGamePayload
 import com.chessy.chess_backend.controller.socketio.game.payload.LeaveGamePayload;
 import com.chessy.chess_backend.controller.socketio.game.payload.MovePayload;
 import com.chessy.chess_backend.dto.GameDto;
+import com.chessy.chess_backend.dto.GameEndResult;
 import com.chessy.chess_backend.dto.GameMoveResult;
 import com.chessy.chess_backend.dto.MoveDto;
 import com.chessy.chess_backend.entity.Game;
@@ -18,7 +19,6 @@ import com.corundumstudio.socketio.annotation.OnEvent;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Component;
 
-
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
@@ -26,11 +26,11 @@ import java.util.UUID;
 @Component
 public class GameSocketController {
 
-    //TODO: broadcast to users not gameID
-    //TODO: complete resign/draw..etc methods
     //TODO: consider joining room with GameID?
-    //TODO: create schedular to kill games with expired timers
-    
+    //TODO: create schedular to kill games with expired timers.
+    //TODO: avoid roundtrips to db for extracting player ids.
+    //TODO: handle race condition issues.
+
 
     private final SocketIOServer server;
     private final GameService gameService;
@@ -45,10 +45,34 @@ public class GameSocketController {
         server.addListeners(this);
     }
 
-
     @OnEvent("game:join")
     public void onJoinGame(SocketIOClient client, JoinGamePayload payload) {
-        // used to show other user if user is connected? TODO
+        UUID userId = requireAuth(client);
+        if (userId == null) return;
+
+        UUID gameId = UUID.fromString(payload.getGameId());
+        if (!validateParticipantOrError(client, gameId, userId)) return;
+
+        // TODO: avoid round trip, validateActiveParticipant could return player IDs directly
+        PlayerIds players = getPlayerIds(gameId);
+
+        UserJoinedEvent event = new UserJoinedEvent(gameId.toString(), userId.toString());
+        sendToPlayers(players, "game:userJoined", event);
+    }
+
+    @OnEvent("game:leave")
+    public void onLeaveGame(SocketIOClient client, LeaveGamePayload payload) {
+        UUID userId = requireAuth(client);
+        if (userId == null) return;
+
+        UUID gameId = UUID.fromString(payload.getGameId());
+        if (!validateParticipantOrError(client, gameId, userId)) return;
+
+        // TODO: avoid round trip, validateActiveParticipant could return player IDs directly
+        PlayerIds players = getPlayerIds(gameId);
+
+        UserLeftEvent event = new UserLeftEvent(gameId.toString(), userId.toString());
+        sendToPlayers(players, "game:userLeft", event);
     }
 
     @OnEvent("game:move")
@@ -66,42 +90,39 @@ public class GameSocketController {
             return;
         }
 
+        PlayerIds players = getPlayerIds(result.getGame());
 
-        UUID whitePlayerId = result.getGame().getWhitePlayer().getId();
-        UUID blackPlayerId = result.getGame().getBlackPlayer().getId();
-
-
-        server.getRoomOperations("user:" + whitePlayerId.toString()).sendEvent("game:moveApplied", result.getMoveEvent());
-        server.getRoomOperations("user:" + blackPlayerId.toString()).sendEvent("game:moveApplied", result.getMoveEvent());
+        sendToPlayers(players, "game:moveApplied", result.getMoveEvent());
         System.out.println("fired moveApplied Event: " + result.getMoveEvent());
         if (result.getEndResult() != null) {
-            server.getRoomOperations("user:" + whitePlayerId.toString()).sendEvent("game:ended", result.getEndResult());
-            server.getRoomOperations("user:" + blackPlayerId.toString()).sendEvent("game:ended", result.getEndResult());
+            sendToPlayers(players, "game:ended", result.getEndResult());
         }
     }
-
-    @OnEvent("game:leave")
-    public void onLeaveGame(SocketIOClient client, LeaveGamePayload payload) {
-        UUID userId = requireAuth(client);
-        if (userId == null) return;
-
-        client.leaveRoom(payload.getGameId());
-    }
-
-
 
     @OnEvent("game:resign")
     public void onResign(SocketIOClient client, GameActionPayload payload) {
         UUID userId = requireAuth(client);
         if (userId == null) return;
 
-        String gameId = payload.getGameId();
+        UUID gameId = UUID.fromString(payload.getGameId());
+        GameEndResult endResult;
+        try {
+            endResult = gameService.resignGame(gameId, userId);
+        } catch (GameNotFoundException | NotAParticipantException | IllegalGameStateException e) {
+            client.sendEvent("game:error", e.getMessage());
+            return;
+        }
 
-        // TODO: confirm userId is a player in this game; determine winner based on who resigned, persist result
-        String result = "..."; // e.g. "0-1" or "1-0"
+        // TODO: avoid round trip, resignGame could return player IDs directly
+        PlayerIds players = getPlayerIds(gameId);
 
-        server.getRoomOperations(gameId)
-                .sendEvent("game:ended", new GameEndedEvent(gameId, result, "resignation"));
+        GameEndedEvent event = new GameEndedEvent(
+                gameId.toString(),
+                endResult.getResult(),
+                endResult.getWinner() == null ? null : endResult.getWinner().toString(),
+                endResult.getResultReason().toString()
+        );
+        sendToPlayers(players, "game:ended", event);
     }
 
     @OnEvent("game:abort")
@@ -109,22 +130,42 @@ public class GameSocketController {
         UUID userId = requireAuth(client);
         if (userId == null) return;
 
-        String gameId = payload.getGameId();
+        UUID gameId = UUID.fromString(payload.getGameId());
+        GameEndResult endResult;
+        try {
+            endResult = gameService.abortGame(gameId, userId);
+        } catch (GameNotFoundException | NotAParticipantException | IllegalGameStateException e) {
+            client.sendEvent("game:error", e.getMessage());
+            return;
+        }
 
-        // TODO: confirm userId is a player in this game; only allow abort under certain conditions (e.g. before move 1)
-        server.getRoomOperations(gameId)
-                .sendEvent("game:ended", new GameEndedEvent(gameId, "aborted", "abort"));
+        // TODO: avoid round trip, abortGame could return player IDs directly
+        PlayerIds players = getPlayerIds(gameId);
+
+        GameEndedEvent event = new GameEndedEvent(
+                gameId.toString(),
+                endResult.getResult(),
+                endResult.getWinner() == null ? null : endResult.getWinner().toString(),
+                endResult.getResultReason().toString()
+        );
+        sendToPlayers(players, "game:ended", event);
     }
 
     @OnEvent("game:offerDraw")
     public void onOfferDraw(SocketIOClient client, GameActionPayload payload) {
+        System.out.println("OfferDraw received by server");
         UUID userId = requireAuth(client);
         if (userId == null) return;
 
-        String gameId = payload.getGameId();
+        UUID gameId = UUID.fromString(payload.getGameId());
+        if (!validateParticipantOrError(client, gameId, userId)) return;
 
-        server.getRoomOperations(gameId)
-                .sendEvent("game:drawOffered", new DrawOfferedEvent(userId.toString()));
+        // TODO: avoid round trip, validateActiveParticipant could return player IDs directly
+        gameService.offerDraw(gameId, userId);
+        PlayerIds players = getPlayerIds(gameId);
+
+        DrawOfferedEvent event = new DrawOfferedEvent(userId.toString());
+        sendToPlayers(players, "game:drawOffered", event);
     }
 
     @OnEvent("game:acceptDraw")
@@ -132,14 +173,28 @@ public class GameSocketController {
         UUID userId = requireAuth(client);
         if (userId == null) return;
 
-        String gameId = payload.getGameId();
+        UUID gameId = UUID.fromString(payload.getGameId());
+        GameEndResult endResult;
+        try {
+            endResult = gameService.acceptDraw(gameId, userId);
+        } catch (GameNotFoundException | NotAParticipantException | IllegalGameStateException e) {
+            client.sendEvent("game:error", e.getMessage());
+            return;
+        }
 
-        // TODO: confirm userId is a player in this game; persist draw result
-        server.getRoomOperations(gameId)
-                .sendEvent("game:drawAccepted", new GameIdEvent(gameId));
+        // TODO: avoid round trip, acceptDraw could return player IDs directly
+        PlayerIds players = getPlayerIds(gameId);
 
-        server.getRoomOperations(gameId)
-                .sendEvent("game:ended", new GameEndedEvent(gameId, "1/2-1/2", "draw agreed"));
+        GameIdEvent acceptedEvent = new GameIdEvent(gameId.toString());
+        GameEndedEvent endedEvent = new GameEndedEvent(
+                gameId.toString(),
+                endResult.getResult(),
+                endResult.getWinner() == null ? "DRAW" : endResult.getWinner().toString(),
+                endResult.getResultReason().toString()
+        );
+
+        sendToPlayers(players, "game:drawAccepted", acceptedEvent);
+        sendToPlayers(players, "game:ended", endedEvent);
     }
 
     @OnEvent("game:declineDraw")
@@ -147,10 +202,15 @@ public class GameSocketController {
         UUID userId = requireAuth(client);
         if (userId == null) return;
 
-        String gameId = payload.getGameId();
+        UUID gameId = UUID.fromString(payload.getGameId());
+        if (!validateParticipantOrError(client, gameId, userId)) return;
 
-        server.getRoomOperations(gameId)
-                .sendEvent("game:declineDraw", new GameIdEvent(gameId));
+        gameService.declineDraw(gameId, userId);
+        // TODO: avoid round trip, validateActiveParticipant could return player IDs directly
+        PlayerIds players = getPlayerIds(gameId);
+
+        GameIdEvent event = new GameIdEvent(gameId.toString());
+        sendToPlayers(players, "game:declineDraw", event);
     }
 
     private UUID requireAuth(SocketIOClient client) {
@@ -162,6 +222,30 @@ public class GameSocketController {
     }
 
 
+    private boolean validateParticipantOrError(SocketIOClient client, UUID gameId, UUID userId) {
+        try {
+            gameService.validateActiveParticipant(gameId, userId);
+            return true;
+        } catch (GameNotFoundException | NotAParticipantException | IllegalGameStateException e) {
+            client.sendEvent("game:error", e.getMessage());
+            return false;
+        }
+    }
 
+    private record PlayerIds(UUID white, UUID black) {}
+
+    private PlayerIds getPlayerIds(GameDto game) {
+        return new PlayerIds(game.getWhitePlayer().getId(), game.getBlackPlayer().getId());
+    }
+
+    private PlayerIds getPlayerIds(UUID gameId) {
+        return getPlayerIds(gameService.getGame(gameId));
+    }
+
+
+    private void sendToPlayers(PlayerIds players, String eventName, Object event) {
+        server.getRoomOperations("user:" + players.white().toString()).sendEvent(eventName, event);
+        server.getRoomOperations("user:" + players.black().toString()).sendEvent(eventName, event);
+    }
 
 }

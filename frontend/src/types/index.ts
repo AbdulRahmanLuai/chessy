@@ -87,7 +87,16 @@ export interface Friendship {
 // ─── Game ──────────────────────────────────────────────────────────────────────
 
 export type GameStatus = 'WAITING' | 'IN_PROGRESS' | 'COMPLETED' | 'ABORTED';
-export type ResultReason = 'checkmate' | 'resignation' | 'timeout' | 'stalemate' | 'agreement';
+export type ResultReason =
+  | 'CHECKMATE'
+  | 'STALEMATE'
+  | 'THREEFOLD_REPETITION'
+  | 'INSUFFICIENT_MATERIAL'
+  | 'FIFTY_MOVE_RULE'
+  | 'TIMEOUT'
+  | 'RESIGNATION'
+  | 'DRAW_AGREEMENT'
+  | 'ABORTED';
 
 export interface TimeControl {
   initialSeconds: number;
@@ -111,7 +120,7 @@ export interface GamePlayer {
 }
 
 export interface GameResult {
-  winner: 'white' | 'black' | 'draw';
+  winner: string | null;
   reason: ResultReason;
 }
 

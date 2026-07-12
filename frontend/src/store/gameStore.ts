@@ -51,7 +51,10 @@ export const useGameStore = create<GameStore>((set) => ({
 
   applyMove: (move, nextFen, whiteTimeRemainingMs, blackTimeRemainingMs) =>
     set((state) => {
-      if (!state.game) return state;
+      if (!state.game){
+         return state;
+         console.log('No game in state to apply move to');
+      }
       return {
         game: {
           ...state.game,
