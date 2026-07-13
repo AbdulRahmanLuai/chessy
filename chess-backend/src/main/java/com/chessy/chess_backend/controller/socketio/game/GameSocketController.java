@@ -27,8 +27,6 @@ import java.util.UUID;
 public class GameSocketController {
 
     //TODO: consider joining room with GameID?
-    //TODO: handle race condition issues.
-
 
     private final SocketIOServer server;
     private final GameService gameService;
@@ -80,7 +78,7 @@ public class GameSocketController {
             handleTimeout(client, e);
             return;
         } catch (GameNotFoundException | IllegalMoveException | MoveNotationException | NotYourTurnException |
-                 NotAParticipantException | IllegalGameStateException e) {
+                 NotAParticipantException | IllegalGameStateException | GameConcurrentModificationException e) {
             client.sendEvent("game:error", e.getMessage());
             return;
         }
@@ -100,7 +98,8 @@ public class GameSocketController {
         } catch (GameTimedOutException e) {
             handleTimeout(client, e);
             return;
-        } catch (GameNotFoundException | NotAParticipantException | IllegalGameStateException e) {
+        } catch (GameNotFoundException | NotAParticipantException | IllegalGameStateException |
+                 GameConcurrentModificationException e) {
             client.sendEvent("game:error", e.getMessage());
             return;
         }
@@ -120,7 +119,8 @@ public class GameSocketController {
         } catch (GameTimedOutException e) {
             handleTimeout(client, e);
             return;
-        } catch (GameNotFoundException | NotAParticipantException | IllegalGameStateException e) {
+        } catch (GameNotFoundException | NotAParticipantException | IllegalGameStateException |
+                 GameConcurrentModificationException e) {
             client.sendEvent("game:error", e.getMessage());
             return;
         }
@@ -137,7 +137,12 @@ public class GameSocketController {
         UUID gameId = UUID.fromString(payload.getGameId());
         if (!validateParticipantOrError(client, gameId, userId)) return;
 
-        gameService.offerDraw(gameId, userId);
+        try {
+            gameService.offerDraw(gameId, userId);
+        } catch (GameConcurrentModificationException e) {
+            client.sendEvent("game:error", e.getMessage());
+            return;
+        }
         broadcaster.broadcastDrawOffered(gameId, userId);
     }
 
@@ -153,7 +158,8 @@ public class GameSocketController {
         } catch (GameTimedOutException e) {
             handleTimeout(client, e);
             return;
-        } catch (GameNotFoundException | NotAParticipantException | IllegalGameStateException e) {
+        } catch (GameNotFoundException | NotAParticipantException | IllegalGameStateException |
+                 GameConcurrentModificationException e) {
             client.sendEvent("game:error", e.getMessage());
             return;
         }
@@ -169,7 +175,12 @@ public class GameSocketController {
         UUID gameId = UUID.fromString(payload.getGameId());
         if (!validateParticipantOrError(client, gameId, userId)) return;
 
-        gameService.declineDraw(gameId, userId);
+        try {
+            gameService.declineDraw(gameId, userId);
+        } catch (GameConcurrentModificationException e) {
+            client.sendEvent("game:error", e.getMessage());
+            return;
+        }
         broadcaster.broadcastDrawDeclined(gameId);
     }
 

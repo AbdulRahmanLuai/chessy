@@ -82,6 +82,14 @@ public class Game {
     @Column(name = "pending_draw_offered_by")
     private UUID pendingDrawOfferedBy;
 
+    @Column(name = "move_version", nullable = false)
+    @Builder.Default
+    private Integer moveVersion = 0;
+
+    @Column(name = "draw_version", nullable = false)
+    @Builder.Default
+    private Integer drawVersion = 0;
+
     @PrePersist
     void onCreate() {
         createdAt = Instant.now();

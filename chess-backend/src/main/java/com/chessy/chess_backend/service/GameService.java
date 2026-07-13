@@ -40,6 +40,7 @@ public class GameService {
     private final ApplicationEventPublisher eventPublisher;
 
     public CreateGameResponseDto createGame(UUID whitePlayerId, UUID blackPlayerId) {
+        // TODO: cleanup games with no moves (add scheduled event) or don't mark them as In-progress in the first place. currently timer starts on first move
         Game game = Game.builder()
                 .whitePlayer(userRepository.getById(whitePlayerId))
                 .blackPlayer(userRepository.getById(blackPlayerId))
@@ -50,6 +51,8 @@ public class GameService {
                 .timeIncrementSeconds(1)
                 .whiteTimeRemainingMs(30_000L)
                 .blackTimeRemainingMs(30_000L)
+                .moveVersion(0)
+                .drawVersion(0)
                 .build();
 
         Game saved = gameRepository.save(game);
@@ -100,12 +103,21 @@ public class GameService {
         Game game = ctx.game();
         boolean isWhite = ctx.isWhite();
         boolean isBlack = ctx.isBlack();
+        int readMoveVersion = game.getMoveVersion();
+
+        // Force-initialize lazy player proxies now, while the session is still
+        // active. applyMoveIfCurrent below runs with clearAutomatically = true,
+        // which detaches the persistence context — after that, gameMapper.toDto(game)
+        // would fail trying to lazy-load these outside a session.
+        org.hibernate.Hibernate.initialize(game.getWhitePlayer());
+        org.hibernate.Hibernate.initialize(game.getBlackPlayer());
+
 
         Board board = new Board();
-//        MoveList moveList = new MoveList();
+        MoveList moveList = new MoveList();
         for (Move historyMove : game.getMoves().stream().map(this::moveFromEntity).toList()) {
             board.doMove(historyMove);
-//            moveList.add(historyMove);
+            moveList.add(historyMove);
         }
 
         Side sideToMove = board.getSideToMove();
@@ -126,8 +138,7 @@ public class GameService {
             throw new IllegalMoveException();
         }
 
-        MoveList moveList = new MoveList(board.getFen());
-        moveList.add(candidateMove); // movelist only contains last two states
+        moveList.add(candidateMove);
         String san;
         try {
             String[] sanArray = moveList.toSanArray();
@@ -151,27 +162,77 @@ public class GameService {
             newDeadlineAt = now.plusMillis(whiteTimeRemainingMs);
         }
 
-        appendMove(game, from, to, payload.getPromotion(), san, sideToMove, now);
+        List<com.chessy.chess_backend.model.Move> updatedMoves =
+                computeUpdatedMoves(game, from, to, payload.getPromotion(), san, sideToMove, now);
+
+        String result = null;
+        GameResultReason resultReason = null;
+        UUID winnerId = null;
+
+        if (board.isMated()) {
+            winnerId = sideToMove.flip() == Side.WHITE ? game.getWhitePlayer().getId() : game.getBlackPlayer().getId(); // TODO: N+1?
+            result = "checkmate";
+            resultReason = GameResultReason.CHECKMATE;
+        } else if (board.isStaleMate()) {
+            result = "draw";
+            resultReason = GameResultReason.STALEMATE;
+        } else if (board.isRepetition()) {
+            result = "draw";
+            resultReason = GameResultReason.THREEFOLD_REPETITION;
+        } else if (board.isInsufficientMaterial()) {
+            result = "draw";
+            resultReason = GameResultReason.INSUFFICIENT_MATERIAL;
+        } else if (board.getHalfMoveCounter() >= 100) {
+            result = "draw";
+            resultReason = GameResultReason.FIFTY_MOVE_RULE;
+        }
+
+        boolean isTerminal = resultReason != null;
+        Game.GameStatus newStatus = isTerminal ? Game.GameStatus.COMPLETED : Game.GameStatus.IN_PROGRESS;
+        Instant finishedAt = isTerminal ? now : null;
+
+        int rows = gameRepository.applyMoveIfCurrent(
+                gameId,
+                board.getFen(),
+                updatedMoves,
+                now,
+                newDeadlineAt,
+                whiteTimeRemainingMs,
+                blackTimeRemainingMs,
+                newStatus,
+                result,
+                resultReason != null ? resultReason.toString() : null,
+                winnerId,
+                finishedAt,
+                readMoveVersion
+        );
+
+        if (rows == 0) {
+            throw new GameConcurrentModificationException(gameId);
+        }
+
+        // Write bypassed the persistence context; keep this local object's fields
+        // in sync with what was just committed so the mapper/response below reflect
+        // the new state. Never call gameRepository.save(game) on this object.
         game.setCurrentFen(board.getFen());
+        game.setMoves(updatedMoves);
         game.setLastMoveAt(now);
         game.setCurrentPlayerDeadlineAt(newDeadlineAt);
         game.setWhiteTimeRemainingMs(whiteTimeRemainingMs);
         game.setBlackTimeRemainingMs(blackTimeRemainingMs);
+        game.setPendingDrawOfferedBy(null);
+        game.setMoveVersion(readMoveVersion + 1);
+        game.setDrawVersion(game.getDrawVersion() + 1);
 
         GameEndResult endResult = null;
-        if (board.isMated()) {
-            UUID winnerId = sideToMove.flip() == Side.WHITE ? game.getWhitePlayer().getId() : game.getBlackPlayer().getId(); // TODO: N+1?
-            endResult = endGame(game, "checkmate", winnerId, GameResultReason.CHECKMATE);
-        } else if (board.isStaleMate()) {
-            endResult = endGame(game, "draw", null, GameResultReason.STALEMATE);
-        } else if (board.isRepetition()) {
-            endResult = endGame(game, "draw", null, GameResultReason.THREEFOLD_REPETITION);
-        } else if (board.isInsufficientMaterial()) {
-            endResult = endGame(game, "draw", null, GameResultReason.INSUFFICIENT_MATERIAL);
-        } else if (board.getHalfMoveCounter() >= 100) {
-            endResult = endGame(game, "draw", null, GameResultReason.FIFTY_MOVE_RULE);
+        if (isTerminal) {
+            game.setStatus(newStatus);
+            game.setResult(result);
+            game.setResultReason(resultReason.toString());
+            game.setWinner(winnerId);
+            game.setFinishedAt(finishedAt);
+            endResult = publishGameEndResult(gameId, result, resultReason, winnerId, finishedAt);
         } else {
-            game = gameRepository.save(game);
             eventPublisher.publishEvent(new GameDeadlineScheduledEvent(game.getId(), game.getCurrentPlayerDeadlineAt()));
         }
 
@@ -224,24 +285,20 @@ public class GameService {
         return Math.max(0L, timeRemaining - elapsedMs + incrementMs);
     }
 
-    public GameEndResult endGame(Game game, String result, UUID winnerId, GameResultReason resultReason) {
-        Instant now = Instant.now();
-        game.setStatus(resultReason == GameResultReason.ABORTED
-                ? Game.GameStatus.ABORTED
-                : Game.GameStatus.COMPLETED);
-        game.setResult(result);
-        game.setResultReason(resultReason.toString());
-        game.setWinner(winnerId);
-        game.setFinishedAt(now);
-
-        game = gameRepository.save(game);
-
-        eventPublisher.publishEvent(new GameFinishedEvent(game.getId()));
-
-        return new GameEndResult(game.getId(), result, resultReason, winnerId, now);
+    /**
+     * Publishes GameFinishedEvent and builds the GameEndResult for the success
+     * (rows-affected == 1) branch of a terminal operation. Must only be called
+     * after the corresponding atomic update has already succeeded.
+     */
+    private GameEndResult publishGameEndResult(UUID gameId, String result, GameResultReason resultReason,
+                                               UUID winnerId, Instant finishedAt) {
+        eventPublisher.publishEvent(new GameFinishedEvent(gameId));
+        return new GameEndResult(gameId, result, resultReason, winnerId, finishedAt);
     }
 
-    private void appendMove(Game game, Square from, Square to, String promotion, String san, Side side, Instant ts) {
+    private List<com.chessy.chess_backend.model.Move> computeUpdatedMoves(Game game, Square from, Square to,
+                                                                          String promotion, String san, Side side,
+                                                                          Instant ts) {
         com.chessy.chess_backend.model.Move move = new com.chessy.chess_backend.model.Move(
                 from.toString(),
                 to.toString(),
@@ -252,7 +309,7 @@ public class GameService {
         );
         List<com.chessy.chess_backend.model.Move> updatedMoves = new ArrayList<>(game.getMoves());
         updatedMoves.add(move);
-        game.setMoves(updatedMoves);
+        return updatedMoves;
     }
 
     @Transactional
@@ -263,20 +320,27 @@ public class GameService {
 
         UUID winnerId = isWhite ? game.getBlackPlayer().getId() : game.getWhitePlayer().getId();
         String result = isWhite ? "0-1" : "1-0";
+        Instant now = Instant.now();
 
-        return endGame(game, result, winnerId, GameResultReason.RESIGNATION);
+        int rows = gameRepository.resignIfInProgress(gameId, result, GameResultReason.RESIGNATION.toString(), winnerId, now);
+        if (rows == 0) {
+            throw new GameConcurrentModificationException(gameId);
+        }
+
+        return publishGameEndResult(gameId, result, GameResultReason.RESIGNATION, winnerId, now);
     }
 
     @Transactional
     public GameEndResult abortGame(UUID gameId, UUID userId) {
-        ParticipantContext ctx = loadActiveParticipant(gameId, userId);
-        Game game = ctx.game();
+        loadActiveParticipant(gameId, userId);
+        Instant now = Instant.now();
 
-        if (game.getMoves().size() >= 2) {
-            throw new IllegalGameStateException("Game can no longer be aborted");
+        int rows = gameRepository.abortIfBelowThreshold(gameId, "aborted", GameResultReason.ABORTED.toString(), now, 2);
+        if (rows == 0) {
+            throw new GameConcurrentModificationException(gameId);
         }
 
-        return endGame(game, "aborted", null, GameResultReason.ABORTED);
+        return publishGameEndResult(gameId, "aborted", GameResultReason.ABORTED, null, now);
     }
 
     public void validateActiveParticipant(UUID gameId, UUID userId) {
@@ -285,18 +349,23 @@ public class GameService {
 
     @Transactional
     public void offerDraw(UUID gameId, UUID userId) {
-        ParticipantContext ctx = loadActiveParticipant(gameId, userId);
-        Game game = ctx.game();
-        game.setPendingDrawOfferedBy(userId);
-        gameRepository.save(game);
+        loadActiveParticipant(gameId, userId);
+
+        int rows = gameRepository.offerDrawIfInProgress(gameId, userId);
+        if (rows == 0) {
+            throw new GameConcurrentModificationException(gameId);
+        }
     }
 
     @Transactional
     public void declineDraw(UUID gameId, UUID userId) {
         ParticipantContext ctx = loadActiveParticipant(gameId, userId);
         Game game = ctx.game();
-        game.setPendingDrawOfferedBy(null);
-        gameRepository.save(game);
+
+        int rows = gameRepository.declineDrawIfCurrent(gameId, game.getDrawVersion());
+        if (rows == 0) {
+            throw new GameConcurrentModificationException(gameId);
+        }
     }
 
     @Transactional
@@ -309,16 +378,22 @@ public class GameService {
             throw new IllegalGameStateException("No draw offer to accept");
         }
 
-        game.setPendingDrawOfferedBy(null);
-        return endGame(game, "1/2-1/2", null, GameResultReason.DRAW_AGREEMENT);
+        Instant now = Instant.now();
+        int rows = gameRepository.acceptDrawIfCurrent(
+                gameId, GameResultReason.DRAW_AGREEMENT.toString(), now, game.getDrawVersion());
+        if (rows == 0) {
+            throw new GameConcurrentModificationException(gameId);
+        }
+
+        return publishGameEndResult(gameId, "1/2-1/2", GameResultReason.DRAW_AGREEMENT, null, now);
     }
 
     /**
      * Scheduler-facing counterpart to the expiry check in loadActiveParticipant.
      * Called by GameTimeoutScheduler when a per-game scheduled task fires, i.e.
      * with no requesting user/action. Returns empty if the game is no longer
-     * IN_PROGRESS or hasn't actually expired (e.g. a later move pushed the
-     * deadline forward before this task ran).
+     * IN_PROGRESS, hasn't actually expired, or lost the CAS race (e.g. a later
+     * move landed and pushed moveVersion forward before this task ran).
      */
     @Transactional
     public Optional<GameEndResult> timeoutIfExpired(UUID gameId) {
@@ -326,7 +401,7 @@ public class GameService {
         if (game == null || game.getStatus() != Game.GameStatus.IN_PROGRESS || !isExpired(game)) {
             return Optional.empty();
         }
-        return Optional.of(timeoutGame(game));
+        return timeoutGame(game);
     }
 
     private record ParticipantContext(Game game, boolean isWhite, boolean isBlack) {
@@ -341,8 +416,11 @@ public class GameService {
         }
 
         if (isExpired(game)) {
-            GameEndResult endResult = timeoutGame(game);
-            throw new GameTimedOutException(endResult);
+            Optional<GameEndResult> endResult = timeoutGame(game);
+            if (endResult.isPresent()) {
+                throw new GameTimedOutException(endResult.get());
+            }
+            throw new GameConcurrentModificationException(gameId);
         }
 
         boolean isWhite = game.getWhitePlayer() != null && userId.equals(game.getWhitePlayer().getId());
@@ -359,11 +437,20 @@ public class GameService {
         return deadline != null && Instant.now().isAfter(deadline);
     }
 
-    private GameEndResult timeoutGame(Game game) {
+    private Optional<GameEndResult> timeoutGame(Game game) {
         boolean whiteToMove = game.getMoves().size() % 2 == 0;
         UUID winnerId = whiteToMove ? game.getBlackPlayer().getId() : game.getWhitePlayer().getId();
         String result = whiteToMove ? "0-1" : "1-0";
-        return endGame(game, result, winnerId, GameResultReason.TIMEOUT);
+        Instant now = Instant.now();
+
+        int rows = gameRepository.timeoutIfCurrent(
+                game.getId(), result, GameResultReason.TIMEOUT.toString(), winnerId, now, game.getMoveVersion());
+
+        if (rows == 0) {
+            return Optional.empty();
+        }
+
+        return Optional.of(publishGameEndResult(game.getId(), result, GameResultReason.TIMEOUT, winnerId, now));
     }
 
 }
