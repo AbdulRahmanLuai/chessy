@@ -1,8 +1,23 @@
 import { emitWhenReady } from './socket';
-import type { SendChallengePayload, RespondChallengePayload, PreferredColor } from './events';
+import type {
+  SendChallengePayload,
+  RespondChallengePayload,
+  PreferredColor,
+} from './events';
 
-function send(challengedUserId: string, preferredColor: PreferredColor = 'RANDOM') {
-  const payload: SendChallengePayload = { challengedUserId, preferredColor };
+function send(
+  challengedUserId: string,
+  timeLimitSeconds: number,
+  incrementSeconds = 0,
+  preferredColor: PreferredColor = 'RANDOM'
+) {
+  const payload: SendChallengePayload = {
+    challengedUserId,
+    preferredColor,
+    timeLimitSeconds,
+    incrementSeconds,
+  };
+
   emitWhenReady('challenge:send', payload);
 }
 

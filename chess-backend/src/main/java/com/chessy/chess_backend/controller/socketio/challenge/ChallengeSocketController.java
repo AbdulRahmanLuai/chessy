@@ -74,6 +74,8 @@ public class ChallengeSocketController {
                 challengerId,
                 challengedId,
                 payload.getPreferredColor(),
+                payload.getTimeLimitSeconds(),
+                payload.getIncrementSeconds(),
                 (oldChallenge, reason) -> notifyEnded(oldChallenge, reason),
                 (expiredChallenge, reason) -> notifyEnded(expiredChallenge, reason)
         );
@@ -161,7 +163,13 @@ public class ChallengeSocketController {
             blackId = challengerIsWhite ? claimed.getChallengedId() : claimed.getChallengerId();
         }
 
-        CreateGameResponseDto game = gameService.createGame(whiteId, blackId); // game state is set to In-progress on creation
+        CreateGameResponseDto game = gameService.createGame(
+                whiteId,
+                blackId,
+                claimed.getTimeLimitSeconds(),
+                claimed.getIncrementSeconds()
+        );
+
         String gameId = game.getGameId().toString();
 
         ChallengeAcceptedEvent event = new ChallengeAcceptedEvent(claimed.getId().toString(), gameId);

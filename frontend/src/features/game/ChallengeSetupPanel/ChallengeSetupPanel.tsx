@@ -106,11 +106,23 @@ export function ChallengeSetupPanel({
   const canSend = targetUserId !== null && !outgoingChallenge;
 
   const handleSend = useCallback(() => {
-    console.log('handleSend called with targetUserId:', targetUserId);
-    if (!targetUserId) return;
-    sendChallenge(targetUserId, preferredColor);
-    onChallengeSent?.();
-  }, [targetUserId, preferredColor, sendChallenge, onChallengeSent]);
+  if (!targetUserId) return;
+
+  sendChallenge(
+    targetUserId,
+    timeControl.initialSeconds,
+    timeControl.incrementSeconds,
+    preferredColor
+  );
+
+  onChallengeSent?.();
+}, [
+  targetUserId,
+  timeControl,
+  preferredColor,
+  sendChallenge,
+  onChallengeSent,
+]);
 
   return (
     <div className={`${styles.wrapper} ${className ?? ''}`}>

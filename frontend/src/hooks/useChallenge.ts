@@ -23,7 +23,13 @@ interface UseChallengeReturn {
   error: string | null;
   acceptedGameId: string | null;
 
-  sendChallenge: (challengedUserId: string, preferredColor?: PreferredColor) => void;
+  sendChallenge: (
+    challengedUserId: string,
+    timeLimitSeconds: number,
+    incrementSeconds?: number,
+    preferredColor?: PreferredColor
+  ) => void;
+
   acceptChallenge: (challengeId: string) => void;
   declineChallenge: (challengeId: string) => void;
   cancelChallenge: () => void;
@@ -52,11 +58,12 @@ export function useChallenge(): UseChallengeReturn {
 
     const setupListeners = () => {
       const socket = getSocket();
-      if (!socket) return; // defensive; shouldn't happen once called from onSocketReady
+      if (!socket) return;
 
       const onChallengeSent = (payload: ChallengeSentEvent) => {
         setOutgoingChallenge(payload);
       };
+
       const onChallengeReceived = (payload: ChallengeReceivedEvent) => {
         console.log('Received challenge:', payload);
         addIncomingChallenge(payload);
@@ -68,15 +75,18 @@ export function useChallenge(): UseChallengeReturn {
           fromDisplayName: payload.fromDisplayName,
         });
       };
+
       const onChallengeAccepted = (payload: ChallengeAcceptedEvent) => {
         clearOutgoingChallenge();
         removeIncomingChallenge(payload.challengeId);
         setAcceptedGameId(payload.gameId);
       };
+
       const onChallengeEnded = (payload: ChallengeEndedEvent) => {
         clearOutgoingChallenge();
         removeIncomingChallenge(payload.challengeId);
       };
+
       const onChallengeError = (message: string) => {
         setError(message);
       };
@@ -96,11 +106,7 @@ export function useChallenge(): UseChallengeReturn {
       };
     };
 
-    let unsubscribeReady: (() => void) | null = null;
-
-    
-    unsubscribeReady = onSocketReady(setupListeners); // call back to remove setupListeners callback from queue in socket.ts on unmount
-    
+    const unsubscribeReady = onSocketReady(setupListeners);
 
     return () => {
       unsubscribeReady?.();
@@ -118,9 +124,22 @@ export function useChallenge(): UseChallengeReturn {
 
   // ─── Actions ────────────────────────────────────────────────────────────────
 
-  const sendChallenge = useCallback((challengedUserId: string, preferredColor: PreferredColor = 'RANDOM') => {
-    challengeSocketService.send(challengedUserId, preferredColor);
-  }, []);
+  const sendChallenge = useCallback(
+  (
+    challengedUserId: string,
+    timeLimitSeconds: number,
+    incrementSeconds = 0,
+    preferredColor: PreferredColor = 'RANDOM'
+  ) => {
+    challengeSocketService.send(
+      challengedUserId,
+      timeLimitSeconds,
+      incrementSeconds,
+      preferredColor
+    );
+  },
+  []
+);
 
   const acceptChallenge = useCallback((challengeId: string) => {
     challengeSocketService.accept(challengeId);

@@ -23,8 +23,13 @@ public class ChallengeService {
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
 
     public Challenge create(UUID challengerId, UUID challengedId, String preferredColor,
+                            Integer timeLimitSeconds, Integer incrementSeconds,
                             BiConsumer<Challenge, String> onOverrideOrCancel,
                             BiConsumer<Challenge, String> onExpire) {
+
+        if (timeLimitSeconds == null || timeLimitSeconds <= 0) {
+            throw new IllegalArgumentException("Time limit must be set and more than 0");
+        }
 
         Challenge existing = byChallenger.get(challengerId);
         if (existing != null) {
@@ -32,7 +37,7 @@ public class ChallengeService {
             onOverrideOrCancel.accept(existing, "overridden");
         }
 
-        Challenge challenge = new Challenge(challengerId, challengedId, preferredColor, TTL_SECONDS);
+        Challenge challenge = new Challenge(challengerId, challengedId, preferredColor, timeLimitSeconds, incrementSeconds, TTL_SECONDS);
 
         var expiryTask = scheduler.schedule(() -> {
             Challenge stillActive = removeIfPresent(challenge.getId());

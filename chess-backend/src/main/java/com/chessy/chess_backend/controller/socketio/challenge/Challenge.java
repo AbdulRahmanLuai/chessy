@@ -9,15 +9,20 @@ public class Challenge {
     private final UUID challengerId;
     private final UUID challengedId;
     private final String preferredColor; // "WHITE" | "BLACK" | "RANDOM"
+    private final int timeLimitSeconds;
+    private final int incrementSeconds;
     private final Instant createdAt;
     private final Instant expiresAt;
     private ScheduledFuture<?> expiryTask;
 
-    public Challenge(UUID challengerId, UUID challengedId, String preferredColor, long ttlSeconds) {
+
+    public Challenge(UUID challengerId, UUID challengedId, String preferredColor, Integer timeLimitSeconds, Integer incrementSeconds, long ttlSeconds) {
         this.id = UUID.randomUUID();
         this.challengerId = challengerId;
         this.challengedId = challengedId;
         this.preferredColor = preferredColor != null ? preferredColor : "RANDOM";
+        this.timeLimitSeconds = timeLimitSeconds;
+        this.incrementSeconds = incrementSeconds != null ? incrementSeconds : 0;
         this.createdAt = Instant.now();
         this.expiresAt = this.createdAt.plusSeconds(ttlSeconds);
     }
@@ -28,7 +33,8 @@ public class Challenge {
     public String getPreferredColor() { return preferredColor; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getExpiresAt() { return expiresAt; }
-
+    public int getTimeLimitSeconds() {return timeLimitSeconds;}
+    public int getIncrementSeconds() {return incrementSeconds;}
     public void setExpiryTask(ScheduledFuture<?> task) { this.expiryTask = task; }
     public void cancelExpiryTask() {
         if (expiryTask != null) expiryTask.cancel(false);

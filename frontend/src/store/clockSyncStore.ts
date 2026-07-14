@@ -12,6 +12,7 @@ interface ClockSyncStore {
   offsetMs: number;
   setOffsetMs: (offsetMs: number) => void;
 }
+// TODO: sync frontend and backend clocks via ping/pong and setOffsetMs() so that useClock can be accurate even if the client clock is off
 
 export const useClockSyncStore = create<ClockSyncStore>((set) => ({
   offsetMs: 0,

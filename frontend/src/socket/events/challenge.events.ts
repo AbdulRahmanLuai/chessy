@@ -10,6 +10,8 @@ export type PreferredColor = 'WHITE' | 'BLACK' | 'RANDOM';
 export interface SendChallengePayload {
   challengedUserId: string;
   preferredColor: PreferredColor;
+  timeLimitSeconds: number;
+  incrementSeconds: number;
 }
 
 export interface RespondChallengePayload {
