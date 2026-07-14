@@ -200,12 +200,13 @@ public class GameSocketController {
         } catch (GameTimedOutException e) {
             handleTimeout(client, e);
             return false;
-        } catch (GameNotFoundException | NotAParticipantException | IllegalGameStateException e) {
+        } catch (GameNotFoundException | NotAParticipantException | IllegalGameStateException |
+                 GameConcurrentModificationException e) {
             client.sendEvent("game:error", e.getMessage());
             return false;
         }
     }
-
+    
     private void handleTimeout(SocketIOClient client, GameTimedOutException e) {
         client.sendEvent("game:error", e.getMessage());
         broadcaster.broadcastGameEnded(e.getEndResult());

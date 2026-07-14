@@ -332,14 +332,18 @@ public class GameService {
 
     @Transactional
     public GameEndResult abortGame(UUID gameId, UUID userId) {
-        loadActiveParticipant(gameId, userId);
-        Instant now = Instant.now();
+        ParticipantContext ctx = loadActiveParticipant(gameId, userId);
+        Game game = ctx.game();
 
+        if (game.getMoveVersion() >= 2) {
+            throw new IllegalGameStateException("Game can no longer be aborted");
+        }
+
+        Instant now = Instant.now();
         int rows = gameRepository.abortIfBelowThreshold(gameId, "aborted", GameResultReason.ABORTED.toString(), now, 2);
         if (rows == 0) {
             throw new GameConcurrentModificationException(gameId);
         }
-
         return publishGameEndResult(gameId, "aborted", GameResultReason.ABORTED, null, now);
     }
 
