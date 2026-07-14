@@ -12,6 +12,8 @@ import Spinner           from '@/components/ui/Spinner';
 import { useAuthStore }  from '@/store/authStore';
 import { useGameStore }  from '@/store/gameStore';
 import { useGame }       from '@/hooks/useGame';
+import { useClock }      from '@/hooks/useClock';
+import { getActiveColor } from '@/utils/turn';
 import type { Color, GamePlayer, Square } from '@/types';
 import styles from './GameRoom.module.css';
 import { Chess } from 'chess.js';
@@ -23,11 +25,6 @@ export interface GameRoomProps {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Derives whose turn it is from the FEN active color field. */
-function getTurnFromFen(fen: string): Color {
-  return fen.split(' ')[1] === 'b' ? 'black' : 'white';
-}
 
 /** Returns the square of the active king if it is in check, otherwise null. */
 function findCheckSquare(fen: string): Square | null {
@@ -63,6 +60,10 @@ export default function GameRoom({ gameId }: GameRoomProps) {
   const game        = useGameStore((s) => s.game);
   const isLoading   = useGameStore((s) => s.isLoading);
 
+  // ── Live clocks (server-authoritative, client-interpolated) ─────────────
+  const whiteTimeRemainingMs = useClock('white');
+  const blackTimeRemainingMs = useClock('black');
+
   // ── Game hook ────────────────────────────────────────────────────────────
   const {
     handleMoveAttempt,
@@ -88,6 +89,9 @@ export default function GameRoom({ gameId }: GameRoomProps) {
 
   // ── Derived: construct GamePlayer objects expected by child components ────
   // GamePlayer is an ephemeral UI shape — built here from the flat Game fields.
+  // Note: timeRemainingMs here is the last server snapshot, not live — PlayerStrip
+  // takes live time as a separate prop (see bottomTimeMs/topTimeMs below) so
+  // high-frequency clock ticks don't replace the whole player object.
   const whiteGamePlayer = useMemo<GamePlayer | null>(() => {
     if (!game) return null;
     return {
@@ -109,7 +113,7 @@ export default function GameRoom({ gameId }: GameRoomProps) {
   }, [game]);
 
   // ── Derived: board state ──────────────────────────────────────────────────
-  const turn = game ? getTurnFromFen(game.currentFen) : 'white';
+  const turn = game ? getActiveColor(game.currentFen) : 'white';
 
   const boardOrientation: Color = isBoardFlipped
     ? (myColor === 'white' ? 'black' : 'white')
@@ -173,8 +177,8 @@ export default function GameRoom({ gameId }: GameRoomProps) {
   // Bottom = the player whose color matches boardOrientation.
   const bottomPlayer = boardOrientation === 'white' ? whiteGamePlayer : blackGamePlayer;
   const topPlayer    = boardOrientation === 'white' ? blackGamePlayer : whiteGamePlayer;
-  const bottomTimeMs = boardOrientation === 'white' ? game.whiteTimeRemainingMs : game.blackTimeRemainingMs;
-  const topTimeMs    = boardOrientation === 'white' ? game.blackTimeRemainingMs : game.whiteTimeRemainingMs;
+  const bottomTimeMs = boardOrientation === 'white' ? whiteTimeRemainingMs : blackTimeRemainingMs;
+  const topTimeMs    = boardOrientation === 'white' ? blackTimeRemainingMs : whiteTimeRemainingMs;
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
