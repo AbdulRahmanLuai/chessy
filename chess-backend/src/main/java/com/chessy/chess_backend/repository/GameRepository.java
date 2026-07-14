@@ -32,7 +32,7 @@ public interface GameRepository extends JpaRepository<Game, UUID> {
      * not legality.
      *
      * @return rows affected: 1 on success, 0 if the game was no longer
-     *         IN_PROGRESS or moveVersion had already advanced (conflict).
+     * IN_PROGRESS or moveVersion had already advanced (conflict).
      */
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Game g SET " +
@@ -144,12 +144,15 @@ public interface GameRepository extends JpaRepository<Game, UUID> {
             "g.result = :result, " +
             "g.resultReason = :resultReason, " +
             "g.winner = :winner, " +
-            "g.finishedAt = :finishedAt " +
+            "g.finishedAt = :finishedAt, " +
+            "g.whiteTimeRemainingMs = CASE WHEN :whiteToMove = true THEN 0 ELSE g.whiteTimeRemainingMs END, " +
+            "g.blackTimeRemainingMs = CASE WHEN :whiteToMove = false THEN 0 ELSE g.blackTimeRemainingMs END " +
             "WHERE g.id = :gameId AND g.status = 'IN_PROGRESS' AND g.moveVersion = :readMoveVersion")
     int timeoutIfCurrent(@Param("gameId") UUID gameId,
                          @Param("result") String result,
                          @Param("resultReason") String resultReason,
                          @Param("winner") UUID winner,
                          @Param("finishedAt") Instant finishedAt,
-                         @Param("readMoveVersion") int readMoveVersion);
+                         @Param("readMoveVersion") int readMoveVersion,
+                         @Param("whiteToMove") boolean whiteToMove);
 }

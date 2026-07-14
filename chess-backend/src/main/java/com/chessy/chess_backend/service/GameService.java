@@ -24,6 +24,7 @@ import com.github.bhlangonijr.chesslib.move.MoveList;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -40,22 +41,34 @@ public class GameService {
     private final ApplicationEventPublisher eventPublisher;
 
     public CreateGameResponseDto createGame(UUID whitePlayerId, UUID blackPlayerId) {
-        // TODO: cleanup games with no moves (add scheduled event) or don't mark them as In-progress in the first place. currently timer starts on first move
+
+        int gracePeriodSeconds = 2;
+        int timeLimitSeconds = 30;
+        int incrementSeconds = 1;
+        // TODO: take game settings from challenge payload
+
+        Instant now = Instant.now();
+        Instant clockStartsAt = now.plus(gracePeriodSeconds, ChronoUnit.SECONDS);
+        long timeLimitMs = timeLimitSeconds * 1000L;
+
         Game game = Game.builder()
                 .whitePlayer(userRepository.getById(whitePlayerId))
                 .blackPlayer(userRepository.getById(blackPlayerId))
                 .status(Game.GameStatus.IN_PROGRESS)
                 .currentFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
                 .moves(new ArrayList<>())
-                .timeInitialSeconds(30)
-                .timeIncrementSeconds(1)
-                .whiteTimeRemainingMs(30_000L)
-                .blackTimeRemainingMs(30_000L)
+                .timeInitialSeconds(timeLimitSeconds)
+                .timeIncrementSeconds(incrementSeconds)
+                .whiteTimeRemainingMs(timeLimitMs)
+                .blackTimeRemainingMs(timeLimitMs)
+                .currentPlayerDeadlineAt(clockStartsAt.plus(timeLimitSeconds, ChronoUnit.SECONDS))
+                .lastMoveAt(clockStartsAt) // grace period before clock starts
                 .moveVersion(0)
                 .drawVersion(0)
                 .build();
 
         Game saved = gameRepository.save(game);
+        eventPublisher.publishEvent(new GameDeadlineScheduledEvent(saved.getId(), saved.getCurrentPlayerDeadlineAt()));
 
         return CreateGameResponseDto.builder()
                 .gameId(saved.getId())
@@ -448,7 +461,8 @@ public class GameService {
         Instant now = Instant.now();
 
         int rows = gameRepository.timeoutIfCurrent(
-                game.getId(), result, GameResultReason.TIMEOUT.toString(), winnerId, now, game.getMoveVersion());
+                game.getId(), result, GameResultReason.TIMEOUT.toString(), winnerId, now,
+                game.getMoveVersion(), whiteToMove);
 
         if (rows == 0) {
             return Optional.empty();
