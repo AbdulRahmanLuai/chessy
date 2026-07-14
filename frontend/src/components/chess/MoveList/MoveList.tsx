@@ -53,6 +53,7 @@ export default function MoveList({
   onMoveClick,
   className,
 }: MoveListProps) {
+  console.log('Rendering MoveList with moves:', moves, 'currentMoveIndex:', currentMoveIndex);
   // Default active index to the last move
   const activeIndex =
     currentMoveIndex !== undefined ? currentMoveIndex : moves.length - 1;

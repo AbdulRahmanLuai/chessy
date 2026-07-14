@@ -2,6 +2,7 @@ import { WifiOff } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
 import Badge from '@/components/ui/Badge';
 import Clock from '@/components/chess/Clock';
+import { useClock } from '@/hooks/useClock';
 import type { GamePlayer } from '@/types';
 import styles from './PlayerStrip.module.css';
 
@@ -11,12 +12,6 @@ export interface PlayerStripProps {
   player: GamePlayer;
   /** Whether it is currently this player's turn */
   isActive: boolean;
-  /**
-   * Time remaining in milliseconds.
-   * Passed separately from player because it updates at high frequency
-   * via useClock and should not cause the full player object to be replaced.
-   */
-  timeRemainingMs: number;
   /**
    * Slot for the CapturedPieces component.
    * Rendered below the main info row when provided.
@@ -30,11 +25,14 @@ export interface PlayerStripProps {
 export default function PlayerStrip({
   player,
   isActive,
-  timeRemainingMs,
   capturedPieces,
   className,
 }: PlayerStripProps) {
-  const { user, isConnected } = player;
+  const { user, isConnected, color } = player;
+
+  // Live-ticking time, computed locally so the 100ms tick only re-renders
+  // this component (and its Clock child) — not the whole GameRoom tree.
+  const timeRemainingMs = useClock(color);
 
   const rootClass = [
     styles.root,

@@ -40,13 +40,9 @@ public class GameService {
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
 
-    public CreateGameResponseDto createGame(UUID whitePlayerId, UUID blackPlayerId) {
+    public CreateGameResponseDto createGame(UUID whitePlayerId, UUID blackPlayerId, int timeLimitSeconds, int incrementSeconds) {
 
         int gracePeriodSeconds = 2;
-        int timeLimitSeconds = 30;
-        int incrementSeconds = 1;
-        // TODO: take game settings from challenge payload
-
         Instant now = Instant.now();
         Instant clockStartsAt = now.plus(gracePeriodSeconds, ChronoUnit.SECONDS);
         long timeLimitMs = timeLimitSeconds * 1000L;
@@ -251,7 +247,7 @@ public class GameService {
 
         MoveAppliedEvent event = new MoveAppliedEvent(
                 gameId.toString(),
-                new MoveAppliedEvent.MoveDetail(payload.getFrom(), payload.getTo(), payload.getPromotion()),
+                new MoveAppliedEvent.MoveDetail(payload.getFrom(), payload.getTo(), payload.getPromotion(), san),
                 game.getCurrentFen(),
                 whiteTimeRemainingMs,
                 blackTimeRemainingMs
