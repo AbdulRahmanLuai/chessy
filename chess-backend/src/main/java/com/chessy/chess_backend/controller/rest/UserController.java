@@ -1,6 +1,6 @@
 package com.chessy.chess_backend.controller.rest;
 
-import com.chessy.chess_backend.dto.UserSearchResultDto;
+import com.chessy.chess_backend.dto.user.UserSearchResultDto;
 import com.chessy.chess_backend.entity.User;
 import com.chessy.chess_backend.repository.UserRepository;
 import com.chessy.chess_backend.security.CustomUserDetails;

@@ -1,6 +1,6 @@
 package com.chessy.chess_backend.config;
 
-import com.chessy.chess_backend.event.SocketAuthenticatedEvent;
+import com.chessy.chess_backend.event.auth.SocketAuthenticatedEvent;
 import com.chessy.chess_backend.util.JwtUtil;
 import com.chessy.chess_backend.util.SocketAuthUtil;
 import com.corundumstudio.socketio.AuthTokenResult;

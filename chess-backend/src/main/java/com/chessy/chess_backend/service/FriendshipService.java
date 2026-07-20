@@ -1,9 +1,10 @@
 package com.chessy.chess_backend.service;
 
-import com.chessy.chess_backend.dto.FriendshipDto;
+import com.chessy.chess_backend.dto.friendship.FriendshipDto;
 import com.chessy.chess_backend.entity.Friendship;
 import com.chessy.chess_backend.entity.User;
 import com.chessy.chess_backend.mapper.FriendshipMapper;
+import com.chessy.chess_backend.model.enums.friendship.FriendshipStatus;
 import com.chessy.chess_backend.repository.FriendshipRepository;
 import com.chessy.chess_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +12,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -34,7 +34,7 @@ public class FriendshipService {
         if (existingOpt.isPresent()) {
             Friendship existing = existingOpt.get();
 
-            if (existing.getStatus() == Friendship.Status.ACCEPTED) {
+            if (existing.getStatus() == FriendshipStatus.ACCEPTED) {
                 throw new IllegalStateException("You are already friends");
             }
 
@@ -45,7 +45,7 @@ public class FriendshipService {
             }
 
             // The target had already sent a request to the requester — auto-accept it
-            existing.setStatus(Friendship.Status.ACCEPTED);
+            existing.setStatus(FriendshipStatus.ACCEPTED);
             return friendshipRepository.save(existing);
         }
 
@@ -59,7 +59,7 @@ public class FriendshipService {
                 .user1(user1)
                 .user2(user2)
                 .requester(requester)
-                .status(Friendship.Status.PENDING)
+                .status(FriendshipStatus.PENDING)
                 .build();
 
         return friendshipRepository.save(friendship);
@@ -68,21 +68,21 @@ public class FriendshipService {
     public Friendship acceptRequest(UUID friendshipId, UUID accepterId) {
         Friendship friendship = getOwned(friendshipId, accepterId);
 
-        if (friendship.getStatus() != Friendship.Status.PENDING) {
+        if (friendship.getStatus() != FriendshipStatus.PENDING) {
             throw new IllegalStateException("Request is not pending");
         }
         if (friendship.getRequester().getId().equals(accepterId)) {
             throw new IllegalStateException("Cannot accept your own request");
         }
 
-        friendship.setStatus(Friendship.Status.ACCEPTED);
+        friendship.setStatus(FriendshipStatus.ACCEPTED);
         return friendshipRepository.save(friendship);
     }
 
     public Friendship declineRequest(UUID friendshipId, UUID declinerId) {
         Friendship friendship = getOwned(friendshipId, declinerId);
 
-        if (friendship.getStatus() != Friendship.Status.PENDING) {
+        if (friendship.getStatus() != FriendshipStatus.PENDING) {
             throw new IllegalStateException("Request is not pending");
         }
 
@@ -93,7 +93,7 @@ public class FriendshipService {
     public Friendship removeFriend(UUID friendshipId, UUID requesterId) {
         Friendship friendship = getOwned(friendshipId, requesterId);
 
-        if (friendship.getStatus() != Friendship.Status.ACCEPTED) {
+        if (friendship.getStatus() != FriendshipStatus.ACCEPTED) {
             throw new IllegalStateException("Not currently friends");
         }
 

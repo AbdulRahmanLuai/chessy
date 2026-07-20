@@ -6,9 +6,9 @@ import com.chessy.chess_backend.controller.socketio.challenge.event.ChallengeRec
 import com.chessy.chess_backend.controller.socketio.challenge.event.ChallengeSentEvent;
 import com.chessy.chess_backend.controller.socketio.challenge.payload.RespondChallengePayload;
 import com.chessy.chess_backend.controller.socketio.challenge.payload.SendChallengePayload;
-import com.chessy.chess_backend.dto.CreateGameResponseDto;
+import com.chessy.chess_backend.dto.onlineGame.CreateGameResponseDto;
 import com.chessy.chess_backend.entity.User;
-import com.chessy.chess_backend.event.SocketAuthenticatedEvent;
+import com.chessy.chess_backend.event.auth.SocketAuthenticatedEvent;
 import com.chessy.chess_backend.repository.UserRepository;
 import com.chessy.chess_backend.service.GameService;
 import com.corundumstudio.socketio.SocketIOClient;

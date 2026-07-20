@@ -2,6 +2,7 @@ package com.chessy.chess_backend.repository;
 
 import com.chessy.chess_backend.entity.Game;
 import com.chessy.chess_backend.model.Move;
+import com.chessy.chess_backend.model.enums.gameGeneral.GameStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -20,7 +21,7 @@ public interface GameRepository extends JpaRepository<Game, UUID> {
             "AND g.status IN ('WAITING', 'IN_PROGRESS')")
     boolean hasActiveGame(@Param("userId") UUID userId);
 
-    List<Game> findByStatus(Game.GameStatus status);
+    List<Game> findByStatus(GameStatus status);
 
     /**
      * Applies a move atomically, guarded by moveVersion staleness check.
@@ -58,7 +59,7 @@ public interface GameRepository extends JpaRepository<Game, UUID> {
                            @Param("deadline") Instant deadline,
                            @Param("whiteTimeRemainingMs") long whiteTimeRemainingMs,
                            @Param("blackTimeRemainingMs") long blackTimeRemainingMs,
-                           @Param("newStatus") Game.GameStatus newStatus,
+                           @Param("newStatus") GameStatus newStatus,
                            @Param("result") String result,
                            @Param("resultReason") String resultReason,
                            @Param("winner") UUID winner,

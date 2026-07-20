@@ -1,5 +1,6 @@
 package com.chessy.chess_backend.entity;
 
+import com.chessy.chess_backend.model.enums.friendship.FriendshipStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -41,7 +42,7 @@ public class Friendship {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Status status;
+    private FriendshipStatus status;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -60,8 +61,5 @@ public class Friendship {
         updatedAt = Instant.now();
     }
 
-    public enum Status {
-        PENDING,
-        ACCEPTED
-    }
+
 }

@@ -1,26 +1,19 @@
 package com.chessy.chess_backend.controller.socketio.game;
 
-import com.chessy.chess_backend.controller.socketio.game.event.*;
 import com.chessy.chess_backend.controller.socketio.game.payload.GameActionPayload;
 import com.chessy.chess_backend.controller.socketio.game.payload.JoinGamePayload;
 import com.chessy.chess_backend.controller.socketio.game.payload.LeaveGamePayload;
 import com.chessy.chess_backend.controller.socketio.game.payload.MovePayload;
-import com.chessy.chess_backend.dto.GameDto;
-import com.chessy.chess_backend.dto.GameEndResult;
-import com.chessy.chess_backend.dto.GameMoveResult;
-import com.chessy.chess_backend.dto.MoveDto;
-import com.chessy.chess_backend.entity.Game;
+import com.chessy.chess_backend.dto.onlineGame.GameEndResult;
+import com.chessy.chess_backend.dto.onlineGame.GameMoveResult;
 import com.chessy.chess_backend.exception.*;
 import com.chessy.chess_backend.service.GameService;
 import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
-import com.corundumstudio.socketio.annotation.OnDisconnect;
 import com.corundumstudio.socketio.annotation.OnEvent;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.UUID;
 
 @Component

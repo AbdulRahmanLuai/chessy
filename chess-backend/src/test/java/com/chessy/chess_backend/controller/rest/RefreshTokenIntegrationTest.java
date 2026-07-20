@@ -1,7 +1,7 @@
 package com.chessy.chess_backend.controller.rest;
 
 import com.chessy.chess_backend.PostgresTestBase;
-import com.chessy.chess_backend.dto.LoginRequest;
+import com.chessy.chess_backend.dto.auth.LoginRequest;
 import com.chessy.chess_backend.entity.User;
 import com.chessy.chess_backend.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;

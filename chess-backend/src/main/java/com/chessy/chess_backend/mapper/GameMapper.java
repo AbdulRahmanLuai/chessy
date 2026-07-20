@@ -1,8 +1,8 @@
 package com.chessy.chess_backend.mapper;
 
-import com.chessy.chess_backend.dto.GameDto;
-import com.chessy.chess_backend.dto.MoveDto;
-import com.chessy.chess_backend.dto.PlayerDto;
+import com.chessy.chess_backend.dto.onlineGame.GameDto;
+import com.chessy.chess_backend.dto.gameGeneral.MoveDto;
+import com.chessy.chess_backend.dto.gameGeneral.PlayerDto;
 import com.chessy.chess_backend.entity.User;
 import com.chessy.chess_backend.model.Move;
 import com.chessy.chess_backend.entity.Game;

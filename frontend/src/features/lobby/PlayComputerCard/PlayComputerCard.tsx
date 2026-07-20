@@ -1,18 +1,13 @@
-import { useState } from 'react';
-import { Bot, Clock, ChevronDown } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Bot } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import styles from './PlayComputerCard.module.css';
 
-type Difficulty = 'easy' | 'medium' | 'hard';
-type TimeControl = 'bullet' | 'blitz' | 'rapid';
-
 export default function PlayComputerCard() {
-  const [difficulty, setDifficulty] = useState<Difficulty>('medium');
-  const [timeControl, setTimeControl] = useState<TimeControl>('blitz');
+  const navigate = useNavigate();
 
   const handlePlay = () => {
-    // TODO: Call game.service to create computer game
-    console.log('Play computer', { difficulty, timeControl });
+    navigate('/play/computer');
   };
 
   return (
@@ -25,43 +20,13 @@ export default function PlayComputerCard() {
         Challenge our AI at your preferred level.
       </p>
 
-      <div className={styles.section}>
-        <label className={styles.label}>Difficulty</label>
-        <div className={styles.buttonGroup}>
-          {(['easy', 'medium', 'hard'] as Difficulty[]).map((level) => (
-            <button
-              key={level}
-              className={`${styles.optionButton} ${difficulty === level ? styles.active : ''}`}
-              onClick={() => setDifficulty(level)}
-            >
-              {level.charAt(0).toUpperCase() + level.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className={styles.section}>
-        <label className={styles.label}>Time Control</label>
-        <div className={styles.buttonGroup}>
-          {(['bullet', 'blitz', 'rapid'] as TimeControl[]).map((tc) => (
-            <button
-              key={tc}
-              className={`${styles.optionButton} ${timeControl === tc ? styles.active : ''}`}
-              onClick={() => setTimeControl(tc)}
-            >
-              {tc.charAt(0).toUpperCase() + tc.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
-
       <Button
         variant="primary"
         fullWidth
         onClick={handlePlay}
         className={styles.playButton}
       >
-        Play
+        Play with Computer
       </Button>
     </div>
   );

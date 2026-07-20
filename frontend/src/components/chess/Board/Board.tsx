@@ -6,17 +6,8 @@ import styles from './Board.module.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-// Sacred board colors — match --board-light and --board-dark tokens exactly.
-// These must be hex values (not CSS vars) because react-chessboard takes JS objects.
 const BOARD_LIGHT  = '#F0D9B5';
 const BOARD_DARK   = '#B58863';
-
-const PROMOTION_PIECES: PieceSymbol[] = ['q', 'r', 'b', 'n'];
-
-const PROMOTION_GLYPHS: Record<Color, Record<string, string>> = {
-  white: { q: '♕', r: '♖', b: '♗', n: '♘' },
-  black: { q: '♛', r: '♜', b: '♝', n: '♞' },
-};
 
 // ─── Highlight styles (JS objects for react-chessboard customSquareStyles) ───
 
@@ -44,12 +35,10 @@ const SQ_CHECK = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Extracts the rank number from a square string (e.g. 'e8' → 8) */
 function rankOf(square: Square): number {
   return parseInt(square[1], 10);
 }
 
-/** Returns true if moving a pawn to this square would require promotion */
 function isPromotionMove(piece: string, to: Square): boolean {
   const isPawn = piece[1]?.toLowerCase() === 'p';
   const rank   = rankOf(to);
@@ -59,30 +48,18 @@ function isPromotionMove(piece: string, to: Square): boolean {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface BoardProps {
-  /** Current board position as a FEN string */
   fen: string;
-  /** Which color appears at the bottom of the board */
   orientation: Color;
-  /**
-   * Called when the user attempts a move.
-   * Parent validates the move and returns true if accepted, false if rejected.
-   * Returning false causes the piece to snap back.
-   */
   onMoveAttempt: (from: Square, to: Square, promotion?: PieceSymbol) => boolean;
-  /** Squares of the last played move to highlight */
   lastMove?: { from: Square; to: Square } | null;
-  /** Square of the king currently in check */
   checkSquare?: Square | null;
-  /** When true the board renders but ignores all interaction */
   disabled?: boolean;
   className?: string;
 }
 
-interface PendingPromotion {
+interface ClickPromotion {
   from: Square;
   to: Square;
-  /** Color of the pawn being promoted, determines which glyphs to show */
-  color: Color;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -96,29 +73,25 @@ export default function Board({
   disabled = false,
   className,
 }: BoardProps) {
-  const [selectedSquare,  setSelectedSquare]  = useState<Square | null>(null);
-  const [pendingPromotion, setPendingPromotion] = useState<PendingPromotion | null>(null);
-
-  // ── Chess instance (display logic only — not game state) ──────────────────
+  const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
+  // Tracks a promotion move initiated by click-to-move, so we can manually
+  // trigger the library's own promotion dialog (drag-initiated promotions
+  // are detected automatically via onPromotionCheck).
+  const [clickPromotion, setClickPromotion] = useState<ClickPromotion | null>(null);
 
   const chess = useMemo(() => {
     try {
       return new Chess(fen);
     } catch {
-      // Fallback to starting position if FEN is malformed
       return new Chess();
     }
   }, [fen]);
-
-  // ── Legal destinations from the selected square ───────────────────────────
 
   const legalDestinations = useMemo<Set<Square>>(() => {
     if (!selectedSquare) return new Set();
     const moves = chess.moves({ square: selectedSquare, verbose: true });
     return new Set(moves.map((m) => m.to as Square));
   }, [chess, selectedSquare]);
-
-  // ── Custom square styles ──────────────────────────────────────────────────
 
   const customSquareStyles = useMemo(() => {
     const sq: Record<string, React.CSSProperties> = {};
@@ -137,7 +110,6 @@ export default function Board({
 
       legalDestinations.forEach((dest) => {
         const occupied = chess.get(dest);
-        // Show a ring on squares with opponent pieces, dot on empty squares
         sq[dest] = occupied ? SQ_VALID_CAPTURE : SQ_VALID_MOVE;
       });
     }
@@ -145,21 +117,11 @@ export default function Board({
     return sq;
   }, [lastMove, checkSquare, selectedSquare, legalDestinations, chess]);
 
-  // ── Attempt a move (shared by click and drag) ─────────────────────────────
+  // ── Attempt a move (drag path only — click path handled separately below) ─
 
   const attemptMove = useCallback(
-    (from: Square, to: Square, piece: string): boolean => {
+    (from: Square, to: Square): boolean => {
       if (disabled) return false;
-
-      if (isPromotionMove(piece, to)) {
-        // Determine the color of the pawn from the piece string ('wP' → white)
-        const color: Color = piece[0] === 'w' ? 'white' : 'black';
-        setPendingPromotion({ from, to, color });
-        setSelectedSquare(null);
-        // Return false so the dragged piece snaps back while picker is shown
-        return false;
-      }
-
       const accepted = onMoveAttempt(from, to);
       if (accepted) setSelectedSquare(null);
       return accepted;
@@ -167,11 +129,9 @@ export default function Board({
     [disabled, onMoveAttempt],
   );
 
-  // ── Drag handler ──────────────────────────────────────────────────────────
-
   const handlePieceDrop = useCallback(
-    (source: string, target: string, piece: string): boolean => {
-      return attemptMove(source as Square, target as Square, piece);
+    (source: string, target: string): boolean => {
+      return attemptMove(source as Square, target as Square);
     },
     [attemptMove],
   );
@@ -182,56 +142,72 @@ export default function Board({
     (square: Square) => {
       if (disabled) return;
 
-      const activeColor = chess.turn() === 'w' ? 'white' : 'black';
-
-      // Nothing selected yet
       if (!selectedSquare) {
         const piece = chess.get(square);
-        // Only select if there's a piece of the active color on this square
         if (piece && piece.color === chess.turn()) {
           setSelectedSquare(square);
         }
         return;
       }
 
-      // Clicking the already-selected square → deselect
       if (square === selectedSquare) {
         setSelectedSquare(null);
         return;
       }
 
-      // Clicking another piece of the same color → switch selection
       const target = chess.get(square);
       if (target && target.color === chess.turn()) {
         setSelectedSquare(square);
         return;
       }
 
-      // Attempt the move
-      // Build a pseudo piece string matching the drag format ('wP', 'bN', etc.)
       const movingPiece = chess.get(selectedSquare);
       if (!movingPiece) {
         setSelectedSquare(null);
         return;
       }
 
+      const activeColor = chess.turn() === 'w' ? 'white' : 'black';
       const pieceStr = `${activeColor === 'white' ? 'w' : 'b'}${movingPiece.type.toUpperCase()}`;
-      attemptMove(selectedSquare, square, pieceStr);
+
+      if (isPromotionMove(pieceStr, square)) {
+        // Manually trigger the library's own promotion dialog instead of moving directly.
+        setClickPromotion({ from: selectedSquare, to: square });
+        setSelectedSquare(null);
+        return;
+      }
+
+      attemptMove(selectedSquare, square);
     },
     [disabled, chess, selectedSquare, attemptMove],
   );
 
-  // ── Promotion picker ──────────────────────────────────────────────────────
+  // ── Promotion piece selected (covers both drag and click flows) ───────────
 
-  function handlePromotionSelect(piece: PieceSymbol) {
-    if (!pendingPromotion) return;
-    onMoveAttempt(pendingPromotion.from, pendingPromotion.to, piece);
-    setPendingPromotion(null);
-  }
+  const handlePromotionPieceSelect = useCallback(
+    (piece?: string, promoteFromSquare?: Square, promoteToSquare?: Square): boolean => {
+      if (!piece) {
+        setClickPromotion(null);
+        return false;
+      }
 
-  function handlePromotionCancel() {
-    setPendingPromotion(null);
-  }
+      const from = promoteFromSquare ?? clickPromotion?.from;
+      const to   = promoteToSquare ?? clickPromotion?.to;
+
+      if (!from || !to) {
+        setClickPromotion(null);
+        return false;
+      }
+
+      // piece comes back like 'wQ' / 'bN' — extract the symbol chess.js expects.
+      const promotion = piece[1]?.toLowerCase() as PieceSymbol;
+
+      const accepted = onMoveAttempt(from, to, promotion);
+      setClickPromotion(null);
+      return accepted;
+    },
+    [onMoveAttempt, clickPromotion],
+  );
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -252,39 +228,11 @@ export default function Board({
         }}
         animationDuration={120}
         areArrowsAllowed={!disabled}
+        promotionDialogVariant="default"
+        onPromotionPieceSelect={handlePromotionPieceSelect}
+        showPromotionDialog={!!clickPromotion}
+        promotionToSquare={clickPromotion?.to ?? null}
       />
-
-      {/* ── Promotion picker overlay ──────────────────────────────────────── */}
-      {pendingPromotion && (
-        <div
-          className={styles.promotionOverlay}
-          role="dialog"
-          aria-label="Choose promotion piece"
-          aria-modal="true"
-        >
-          <div className={styles.promotionCard}>
-            <p className={styles.promotionLabel}>Promote to</p>
-            <div className={styles.promotionPieces}>
-              {PROMOTION_PIECES.map((piece) => (
-                <button
-                  key={piece}
-                  className={styles.promotionPieceBtn}
-                  onClick={() => handlePromotionSelect(piece)}
-                  aria-label={`Promote to ${piece}`}
-                >
-                  {PROMOTION_GLYPHS[pendingPromotion.color][piece]}
-                </button>
-              ))}
-            </div>
-            <button
-              className={styles.promotionCancel}
-              onClick={handlePromotionCancel}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ── Disabled overlay ─────────────────────────────────────────────── */}
       {disabled && <div className={styles.disabledOverlay} aria-hidden="true" />}

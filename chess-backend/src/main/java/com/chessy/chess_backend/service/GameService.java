@@ -2,13 +2,16 @@ package com.chessy.chess_backend.service;
 
 import com.chessy.chess_backend.controller.socketio.game.event.MoveAppliedEvent;
 import com.chessy.chess_backend.controller.socketio.game.payload.MovePayload;
-import com.chessy.chess_backend.dto.*;
+import com.chessy.chess_backend.model.enums.gameGeneral.GameResultReason;
+import com.chessy.chess_backend.dto.gameGeneral.MoveListDto;
+import com.chessy.chess_backend.dto.onlineGame.*;
 import com.chessy.chess_backend.entity.Game;
-import com.chessy.chess_backend.event.GameDeadlineScheduledEvent;
-import com.chessy.chess_backend.event.GameFinishedEvent;
+import com.chessy.chess_backend.event.onlineGame.GameDeadlineScheduledEvent;
+import com.chessy.chess_backend.event.onlineGame.GameFinishedEvent;
 import com.chessy.chess_backend.exception.*;
 import com.chessy.chess_backend.mapper.GameMapper;
 import com.chessy.chess_backend.mapper.MoveMapper;
+import com.chessy.chess_backend.model.enums.gameGeneral.GameStatus;
 import com.chessy.chess_backend.repository.GameRepository;
 import com.chessy.chess_backend.repository.UserRepository;
 import com.github.bhlangonijr.chesslib.move.MoveGenerator;
@@ -50,7 +53,7 @@ public class GameService {
         Game game = Game.builder()
                 .whitePlayer(userRepository.getById(whitePlayerId))
                 .blackPlayer(userRepository.getById(blackPlayerId))
-                .status(Game.GameStatus.IN_PROGRESS)
+                .status(GameStatus.IN_PROGRESS)
                 .currentFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
                 .moves(new ArrayList<>())
                 .timeInitialSeconds(timeLimitSeconds)
@@ -100,7 +103,7 @@ public class GameService {
         Game game = gameRepository.findById(gameId)
                 .orElseThrow();
 
-        game.setStatus(Game.GameStatus.IN_PROGRESS);
+        game.setStatus(GameStatus.IN_PROGRESS);
         gameRepository.save(game);
 
         return gameMapper.toDto(game);
@@ -197,7 +200,7 @@ public class GameService {
         }
 
         boolean isTerminal = resultReason != null;
-        Game.GameStatus newStatus = isTerminal ? Game.GameStatus.COMPLETED : Game.GameStatus.IN_PROGRESS;
+        GameStatus newStatus = isTerminal ? GameStatus.COMPLETED : GameStatus.IN_PROGRESS;
         Instant finishedAt = isTerminal ? now : null;
 
         int rows = gameRepository.applyMoveIfCurrent(
@@ -411,7 +414,7 @@ public class GameService {
     @Transactional
     public Optional<GameEndResult> timeoutIfExpired(UUID gameId) {
         Game game = gameRepository.findById(gameId).orElse(null);
-        if (game == null || game.getStatus() != Game.GameStatus.IN_PROGRESS || !isExpired(game)) {
+        if (game == null || game.getStatus() != GameStatus.IN_PROGRESS || !isExpired(game)) {
             return Optional.empty();
         }
         return timeoutGame(game);
@@ -424,7 +427,7 @@ public class GameService {
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new GameNotFoundException(gameId));
 
-        if (game.getStatus() != Game.GameStatus.IN_PROGRESS) {
+        if (game.getStatus() != GameStatus.IN_PROGRESS) {
             throw new IllegalGameStateException("Game is not in progress");
         }
 

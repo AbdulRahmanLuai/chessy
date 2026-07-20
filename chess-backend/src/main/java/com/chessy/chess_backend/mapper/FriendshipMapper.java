@@ -1,6 +1,6 @@
 package com.chessy.chess_backend.mapper;
 
-import com.chessy.chess_backend.dto.FriendshipDto;
+import com.chessy.chess_backend.dto.friendship.FriendshipDto;
 import com.chessy.chess_backend.entity.Friendship;
 import com.chessy.chess_backend.entity.User;
 import org.springframework.stereotype.Component;

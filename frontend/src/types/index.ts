@@ -156,3 +156,50 @@ export interface PaginatedResponse<T> {
   pageSize: number;
   hasMore: boolean;
 }
+
+// ─── Computer Game ─────────────────────────────────────────────────────────────
+
+export type ComputerGameDifficulty = 'EASY' | 'MEDIUM' | 'HARD';
+
+// Only one engine exists today, but keep this a union so adding a new
+// engine later is a type-level change, not a silent string.
+export type ComputerEngine = 'RANDOM';
+
+export type ComputerGameUserColor = 'WHITE' | 'BLACK';
+
+// What the user picks before the game exists — 'RANDOM' is resolved
+// server-side into a ComputerGameUserColor once the game is created.
+export type ColorPreference = 'WHITE' | 'BLACK' | 'RANDOM';
+
+export interface ComputerGame {
+  id: string;
+  userId: string;
+  userColor: ComputerGameUserColor;
+  status: GameStatus;
+  currentFen: string;
+  moves: Move[];
+  difficulty: ComputerGameDifficulty;
+  engine: ComputerEngine;
+  result: string | null;
+  resultReason: string | null;
+  isTimed: boolean;
+  timeInitialSeconds: number | null;
+  timeIncrementSeconds: number | null;
+  whiteTimeRemainingMs: number;
+  blackTimeRemainingMs: number;
+  lastMoveAt: string | null;
+  currentPlayerDeadlineAt: string | null;
+  createdAt: string;
+  finishedAt: string | null;
+}
+
+export interface CreateComputerGameRequest {
+  difficulty: ComputerGameDifficulty;
+  engine: ComputerEngine;
+  isTimed: boolean;
+  timeInitialSeconds?: number;
+  timeIncrementSeconds?: number;
+  colorPreference: ColorPreference;
+}
+
+

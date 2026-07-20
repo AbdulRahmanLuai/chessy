@@ -1,10 +1,11 @@
 package com.chessy.chess_backend.controller.rest;
 
 import com.chessy.chess_backend.controller.socketio.friend.FriendSocketNotifier;
-import com.chessy.chess_backend.dto.FriendshipDto;
-import com.chessy.chess_backend.dto.SendFriendRequestPayload;
+import com.chessy.chess_backend.dto.friendship.FriendshipDto;
+import com.chessy.chess_backend.dto.friendship.SendFriendRequestPayload;
 import com.chessy.chess_backend.entity.Friendship;
 import com.chessy.chess_backend.mapper.FriendshipMapper;
+import com.chessy.chess_backend.model.enums.friendship.FriendshipStatus;
 import com.chessy.chess_backend.security.CustomUserDetails;
 import com.chessy.chess_backend.service.FriendshipService;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +14,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -30,7 +30,7 @@ public class FriendshipController {
         UUID requesterId = resolveUserId(auth);
         Friendship friendship = friendshipService.sendRequest(requesterId, payload.getTargetUserId());
 
-        if (friendship.getStatus() == Friendship.Status.ACCEPTED) {
+        if (friendship.getStatus() == FriendshipStatus.ACCEPTED) {
             // Auto-accepted a reverse pending request
             friendSocketNotifier.notifyRequestAccepted(
                     friendship.getRequester().getId(),

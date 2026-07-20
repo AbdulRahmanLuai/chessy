@@ -4,6 +4,7 @@ package com.chessy.chess_backend.entity;
 import com.chessy.chess_backend.converter.MoveListConverter;
 
 import com.chessy.chess_backend.model.Move;
+import com.chessy.chess_backend.model.enums.gameGeneral.GameStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.Instant;
@@ -93,9 +94,5 @@ public class Game {
     @PrePersist
     void onCreate() {
         createdAt = Instant.now();
-    }
-
-    public enum GameStatus {
-        WAITING, IN_PROGRESS, COMPLETED, ABORTED
     }
 }

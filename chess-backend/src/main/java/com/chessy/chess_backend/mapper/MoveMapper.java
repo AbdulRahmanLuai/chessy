@@ -1,6 +1,6 @@
 package com.chessy.chess_backend.mapper;
 
-import com.chessy.chess_backend.dto.MoveDto;
+import com.chessy.chess_backend.dto.gameGeneral.MoveDto;
 import com.chessy.chess_backend.model.Move;
 import org.springframework.stereotype.Component;
 

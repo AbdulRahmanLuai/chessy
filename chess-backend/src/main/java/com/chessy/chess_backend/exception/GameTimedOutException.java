@@ -1,6 +1,6 @@
 package com.chessy.chess_backend.exception;
 
-import com.chessy.chess_backend.dto.GameEndResult;
+import com.chessy.chess_backend.dto.onlineGame.GameEndResult;
 
 public class GameTimedOutException extends RuntimeException {
 
@@ -14,4 +14,5 @@ public class GameTimedOutException extends RuntimeException {
     public GameEndResult getEndResult() {
         return endResult;
     }
+
 }

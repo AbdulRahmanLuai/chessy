@@ -7,32 +7,25 @@ import type { GamePlayer } from '@/types';
 import styles from './PlayerStrip.module.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
 export interface PlayerStripProps {
   player: GamePlayer;
-  /** Whether it is currently this player's turn */
   isActive: boolean;
-  /**
-   * Slot for the CapturedPieces component.
-   * Rendered below the main info row when provided.
-   */
+  /** Timestamp the player's time snapshot is anchored to (last move, or game creation). */
+  anchorTimestamp: string | null | undefined;
   capturedPieces?: React.ReactNode;
   className?: string;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export default function PlayerStrip({
   player,
   isActive,
+  anchorTimestamp,
   capturedPieces,
   className,
 }: PlayerStripProps) {
-  const { user, isConnected, color } = player;
+  const { user, isConnected, timeRemainingMs: baseRemainingMs } = player;
 
-  // Live-ticking time, computed locally so the 100ms tick only re-renders
-  // this component (and its Clock child) — not the whole GameRoom tree.
-  const timeRemainingMs = useClock(color);
+  const timeRemainingMs = useClock({ baseRemainingMs, anchorTimestamp, isActive });
 
   const rootClass = [
     styles.root,

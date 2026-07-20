@@ -1,8 +1,7 @@
 package com.chessy.chess_backend.controller.rest;
 
-import com.chessy.chess_backend.dto.CreateGameResponseDto;
-import com.chessy.chess_backend.dto.GameDto;
-import com.chessy.chess_backend.dto.MoveListDto;
+import com.chessy.chess_backend.dto.onlineGame.GameDto;
+import com.chessy.chess_backend.dto.gameGeneral.MoveListDto;
 import com.chessy.chess_backend.service.GameService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

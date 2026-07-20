@@ -9,6 +9,8 @@ import LobbyPage from './pages/LobbyPage/LobbyPage';
 import OAuthCallbackPage from './pages/OAuthCallbackPage/OAuthCallbackPage';
 import GamePage from './pages/GamePage/GamePage';
 import PlayOnlinePage from './pages/PlayOnlinePage/PlayOnlinePage';
+import ComputerGamePage from './pages/ComputerGamePage';
+import PlayComputerPage from './pages/PlayComputerPage/PlayComputerPage';
 
 export const router = createBrowserRouter([
   {
@@ -83,9 +85,20 @@ export const router = createBrowserRouter([
   children: [{ index: true, element: <GamePage /> }],
 },
 
-  // ── 404 ───────────────────────────────────────────────────────────────────
   {
-    path: '*',
+    path: '/play/computer',
+    element: <ProtectedRoute />,
+    children: [{ index: true, element: <PlayComputerPage /> }],
+  },
+  {
+    path: '/play/computer/:gameId',
+    element: <ProtectedRoute />,
+    children: [{ index: true, element: <ComputerGamePage /> }],
+  },
+
+
+  // ── 404 ───────────────────────────────────────────────────────────────────
+ {   path: '*',
     element: (
       <div
         style={{

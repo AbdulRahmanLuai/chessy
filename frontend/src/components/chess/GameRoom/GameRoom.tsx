@@ -173,9 +173,10 @@ export default function GameRoom({ gameId }: GameRoomProps) {
       {/* ── Board column ─────────────────────────────────────────────────── */}
       <div className={styles.boardColumn}>
 
-        <PlayerStrip
+                <PlayerStrip
           player={topPlayer}
           isActive={turn !== myColor}
+          anchorTimestamp={game.lastMoveAt ?? game.createdAt}
         />
 
         {drawOfferReceived && (
@@ -199,6 +200,7 @@ export default function GameRoom({ gameId }: GameRoomProps) {
         <PlayerStrip
           player={bottomPlayer}
           isActive={isMyTurn}
+          anchorTimestamp={game.lastMoveAt ?? game.createdAt}
         />
       </div>
 

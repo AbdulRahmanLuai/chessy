@@ -1,9 +1,9 @@
 package com.chessy.chess_backend.controller.socketio.game;
 
 import com.chessy.chess_backend.controller.socketio.game.event.*;
-import com.chessy.chess_backend.dto.GameDto;
-import com.chessy.chess_backend.dto.GameEndResult;
-import com.chessy.chess_backend.dto.GameMoveResult;
+import com.chessy.chess_backend.dto.onlineGame.GameDto;
+import com.chessy.chess_backend.dto.onlineGame.GameEndResult;
+import com.chessy.chess_backend.dto.onlineGame.GameMoveResult;
 import com.chessy.chess_backend.service.GameService;
 import com.corundumstudio.socketio.SocketIOServer;
 import lombok.RequiredArgsConstructor;
