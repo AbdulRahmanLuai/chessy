@@ -55,7 +55,6 @@ export function useAuth() {
         resetRefreshState();
         login(user, response.accessToken);
         setAccessToken(response.accessToken);
-        // navigate('/lobby');
         return { success: true };
       } catch (error) {
         log.error('loginUser failed', error);
@@ -81,7 +80,6 @@ export function useAuth() {
         resetRefreshState();
         login(user, response.accessToken);
         setAccessToken(response.accessToken);
-        // navigate('/lobby');
         return { success: true };
       } catch (error) {
         log.error('registerUser failed', error);

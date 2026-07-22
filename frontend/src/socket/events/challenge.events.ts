@@ -31,9 +31,16 @@ export interface ChallengeClientToServerEvents {
 // ─────────────────────────────────────────────────────────────
 //
 
+// Backend now includes the challenged user's username/displayName directly
+// on this payload (rather than the frontend having to resolve
+// challengedUserId via a separate lookup) — needed so the global challenges
+// button in the navbar can render who the outgoing challenge was sent to
+// without extra round-trips.
 export interface ChallengeSentEvent {
   challengeId: string;
   challengedUserId: string;
+  toUsername: string;
+  toDisplayName: string;
   preferredColor: PreferredColor;
   expiresAtEpochMs: number;
 }

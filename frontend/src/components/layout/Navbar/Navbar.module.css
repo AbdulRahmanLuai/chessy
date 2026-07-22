@@ -271,10 +271,12 @@
   }
 }
 
-.challengesButton {
-  margin-right: var(--space-2);
+.navItem {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .popoverAnchor {
-  position: relative;
+  position: static;
 }

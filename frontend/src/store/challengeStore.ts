@@ -7,6 +7,8 @@ export interface OutgoingChallenge {
   challengedUserId: string;
   expiresAtEpochMs: number;
   preferredColor: PreferredColor;
+  toUsername: string;
+  toDisplayName: string;
 }
 
 export interface IncomingChallenge {

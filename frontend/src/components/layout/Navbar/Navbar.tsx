@@ -1,12 +1,12 @@
 // src/components/layout/Navbar/Navbar.tsx
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronDown, LogOut, User, Users, Swords } from 'lucide-react';
-import { IncomingChallengesButton } from '@/features/challenge/IncomingChallengesButton';
+import { ChevronDown, LogOut, User, Users } from 'lucide-react';
+import { ChallengesButton } from '@/features/challenge/ChallengesButton';
 import { FriendsPopover } from '@/features/friends/FriendsPopover';
 import { ChallengeSetupPanel } from '@/features/game/ChallengeSetupPanel';
 import Modal from '@/components/ui/Modal';
-import type { Friendship, User as UserType } from '../../../types';
+import type { Friendship, User as UserType, UserSearchResult } from '../../../types';
 import styles from './Navbar.module.css';
 
 export interface NavbarProps {
@@ -19,6 +19,7 @@ export default function Navbar({ user, onLogout, isLoading = false }: NavbarProp
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isFriendsOpen, setIsFriendsOpen] = useState(false);
   const [challengeFriend, setChallengeFriend] = useState<Friendship | null>(null);
+  const [challengeUser, setChallengeUser] = useState<UserSearchResult | null>(null);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const friendsButtonRef = useRef<HTMLButtonElement>(null);
@@ -52,30 +53,40 @@ export default function Navbar({ user, onLogout, isLoading = false }: NavbarProp
     <header className={styles.root}>
       <div className={styles.inner}>
         {/* Logo */}
-        <Link to="/" className={styles.logo}>
+        <Link to="/lobby" className={styles.logo}>
           <span className={styles.logoIcon} aria-hidden="true">♟</span>
           <span className={styles.logoText}>Chessy</span>
         </Link>
 
         {/* Navigation */}
         <nav className={styles.nav} aria-label="Main navigation">
-          <Link to="/lobby" className={styles.navLink}>
-            <Swords size={18} />
-            <span>Lobby</span>
-          </Link>
+          {user && <ChallengesButton onChallengeUser={setChallengeUser} />}
 
           {user && (
-            <button
-              ref={friendsButtonRef}
-              className={styles.navLink}
-              onClick={() => setIsFriendsOpen((prev) => !prev)}
-              type="button"
-              aria-expanded={isFriendsOpen}
-              aria-haspopup="true"
-            >
-              <Users size={18} />
-              <span>Friends</span>
-            </button>
+            <div className={styles.navItem}>
+              <button
+                ref={friendsButtonRef}
+                className={styles.navLink}
+                onClick={() => setIsFriendsOpen((prev) => !prev)}
+                type="button"
+                aria-expanded={isFriendsOpen}
+                aria-haspopup="true"
+              >
+                <Users size={18} />
+                <span>Friends</span>
+              </button>
+
+              {isFriendsOpen && (
+                <div className={styles.popoverAnchor}>
+                  <FriendsPopover
+                    onClose={() => setIsFriendsOpen(false)}
+                    onChallenge={(friend) => {
+                      setChallengeFriend(friend);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           )}
         </nav>
 
@@ -83,8 +94,6 @@ export default function Navbar({ user, onLogout, isLoading = false }: NavbarProp
         <div className={styles.userMenu} ref={dropdownRef}>
           {user ? (
             <>
-              <IncomingChallengesButton className={styles.challengesButton} />
-
               <button
                 className={styles.trigger}
                 onClick={() => setIsDropdownOpen((prev) => !prev)}
@@ -129,28 +138,25 @@ export default function Navbar({ user, onLogout, isLoading = false }: NavbarProp
         </div>
       </div>
 
-      {/* Friends Popover (dropdown) */}
-      {isFriendsOpen && (
-        <div className={styles.popoverAnchor}>
-          <FriendsPopover
-            onClose={() => setIsFriendsOpen(false)}
-            onChallenge={(friend) => {
-              setChallengeFriend(friend);
-            }}
-          />
-        </div>
-      )}
-
-      {/* Challenge Modal (opened from popover) */}
+      {/* Challenge Modal (opened from Friends popover or Challenges search tab) */}
       <Modal
-        isOpen={challengeFriend !== null}
-        onClose={() => setChallengeFriend(null)}
-        title="Challenge Friend"
+        isOpen={challengeFriend !== null || challengeUser !== null}
+        onClose={() => {
+          setChallengeFriend(null);
+          setChallengeUser(null);
+        }}
+        title="Send Challenge"
       >
         {challengeFriend && (
           <ChallengeSetupPanel
             presetFriend={challengeFriend}
             onChallengeSent={() => setChallengeFriend(null)}
+          />
+        )}
+        {challengeUser && (
+          <ChallengeSetupPanel
+            presetUser={challengeUser}
+            onChallengeSent={() => setChallengeUser(null)}
           />
         )}
       </Modal>

@@ -1,6 +1,7 @@
 // src/features/friends/FriendsList/FriendsList.tsx
 
 import { useEffect, useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { Swords, UserMinus, X, Check } from 'lucide-react';
 import { friendsService } from '@/services/friends.service';
 import { useFriendsVersion } from '@/store/friendStore';
@@ -164,7 +165,13 @@ export function FriendsList({
 
             return (
               <li key={friend.id} className={styles.itemRow}>
-                <Avatar username={friend.otherDisplayName} />
+                <Link
+                  to={`/profile/${friend.otherUsername}`}
+                  className={styles.avatarLink}
+                  aria-label={`View ${friend.otherDisplayName}'s profile`}
+                >
+                  <Avatar username={friend.otherDisplayName} />
+                </Link>
 
                 <span className={styles.names}>
                   <span className={styles.displayName}>
@@ -176,23 +183,35 @@ export function FriendsList({
                 </span>
 
                 <div className={styles.actions}>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    iconLeft={<Swords size={14} />}
-                    onClick={() => onChallenge?.(friend)}
-                  >
-                    Challenge
-                  </Button>
+                  <span className={styles.tooltipWrapper}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className={styles.iconButton}
+                      aria-label="Challenge"
+                      onClick={() => onChallenge?.(friend)}
+                    >
+                      <Swords size={14} />
+                    </Button>
+                    <span className={styles.tooltipLabel} role="tooltip">
+                      Challenge
+                    </span>
+                  </span>
 
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    iconLeft={<UserMinus size={14} />}
-                    onClick={() => setConfirmingId(friend.id)}
-                  >
-                    Remove
-                  </Button>
+                  <span className={styles.tooltipWrapper}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className={`${styles.iconButton} ${styles.dangerGhost}`}
+                      aria-label="Remove"
+                      onClick={() => setConfirmingId(friend.id)}
+                    >
+                      <UserMinus size={14} />
+                    </Button>
+                    <span className={styles.tooltipLabel} role="tooltip">
+                      Remove
+                    </span>
+                  </span>
                 </div>
               </li>
             );

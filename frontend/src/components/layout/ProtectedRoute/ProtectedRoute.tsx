@@ -1,6 +1,10 @@
 import { useCallback } from 'react';
 import { Navigate, Outlet, useNavigate } from 'react-router-dom';
-import { useIsAuthenticated, useAuthLoading, useUser, useAuthStore } from '@/store/authStore';
+import {
+  useIsAuthenticated,
+  useUser,
+  useAuthStore,
+} from '@/store/authStore';
 import { authService } from '@/services/auth.service';
 import { setAccessToken } from '@/services/api';
 import AppLayout from '../AppLayout';
@@ -15,9 +19,11 @@ export default function ProtectedRoute({
   children,
 }: ProtectedRouteProps) {
   const isAuthenticated = useIsAuthenticated();
-  const isLoading       = useAuthLoading();
-  const user            = useUser();
-  const navigate        = useNavigate();
+  const user = useUser();
+  const authInitialized = useAuthStore((s) => s.authInitialized);
+  const navigate = useNavigate();
+
+  console.log('ProtectedRoute path:', window.location.pathname);
 
   // ── Logout inline — avoids importing useAuth() which would spawn another
   //    silent refresh attempt for every protected page rendered ──────────────
@@ -33,7 +39,12 @@ export default function ProtectedRoute({
     }
   }, [navigate]);
 
-  if (isLoading) {
+  console.log('[ProtectedRoute]', {
+  authInitialized,
+  isAuthenticated,
+  path: window.location.pathname,
+});
+  if (!authInitialized) {
     return null;
   }
 

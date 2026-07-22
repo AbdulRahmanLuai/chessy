@@ -219,7 +219,7 @@ export default function Board({
         onPieceDrop={handlePieceDrop}
         onSquareClick={handleSquareClick}
         customSquareStyles={customSquareStyles}
-        arePiecesDraggable={!disabled}
+        // arePiecesDraggable={!disabled}
         customLightSquareStyle={{ backgroundColor: BOARD_LIGHT }}
         customDarkSquareStyle={{ backgroundColor: BOARD_DARK }}
         customBoardStyle={{

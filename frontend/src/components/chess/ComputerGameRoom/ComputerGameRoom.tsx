@@ -1,6 +1,6 @@
 // src/components/chess/ComputerGameRoom/ComputerGameRoom.tsx
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Board             from '@/components/chess/Board';
 import PlayerStrip       from '@/components/chess/PlayerStrip';
@@ -98,7 +98,10 @@ function resolveWinnerId(
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
+  console.log('ComputerGameRoom rendered');
+
   const navigate = useNavigate();
+  
 
   // ── Store access ─────────────────────────────────────────────────────────
   const currentUser = useAuthStore((s) => s.user);
@@ -210,6 +213,8 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
   // ── Which strip is on top vs bottom? ─────────────────────────────────────
   const bottomPlayer = boardOrientation === 'white' ? whiteGamePlayer : blackGamePlayer;
   const topPlayer    = boardOrientation === 'white' ? blackGamePlayer : whiteGamePlayer;
+
+  
 
   // ─── Render ───────────────────────────────────────────────────────────────
 

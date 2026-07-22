@@ -5,10 +5,9 @@
 .wrapper {
   position: relative;
   width: 100%;
-  /* react-chessboard sizes itself to the width of its container.
-     The parent (GamePage layout) enforces the square aspect ratio via
-     aspect-ratio: 1 / 1 — the board fills it completely. */
 }
+
+
 
 /* ─── Disabled overlay ───────────────────────────────────────────────────────── */
 

@@ -59,6 +59,7 @@ export function ComputerGameSetupPanel({
         <div className={styles.toggleRow}>
           <Button
             variant={isTimed ? 'primary' : 'secondary'}
+            size="sm"
             onClick={() => setIsTimed(true)}
             disabled={isSubmitting}
           >
@@ -66,6 +67,7 @@ export function ComputerGameSetupPanel({
           </Button>
           <Button
             variant={!isTimed ? 'primary' : 'secondary'}
+            size="sm"
             onClick={() => setIsTimed(false)}
             disabled={isSubmitting}
           >
@@ -86,10 +88,10 @@ export function ComputerGameSetupPanel({
       <div className={styles.section}>
         <span className={styles.sectionLabel}>Engine</span>
         <div className={styles.toggleRow}>
-          <Button variant="primary" disabled>
+          <Button variant="primary" size="sm" disabled>
             Random Engine
           </Button>
-          <Button variant="secondary" disabled title="Coming soon">
+          <Button variant="secondary" size="sm" disabled title="Coming soon">
             Stockfish
           </Button>
         </div>
@@ -103,6 +105,7 @@ export function ComputerGameSetupPanel({
             <Button
               key={level}
               variant={difficulty === level ? 'primary' : 'secondary'}
+              size="sm"
               onClick={() => setDifficulty(level)}
               disabled={isSubmitting}
             >
@@ -120,6 +123,7 @@ export function ComputerGameSetupPanel({
             <Button
               key={color}
               variant={colorPreference === color ? 'primary' : 'secondary'}
+              size="sm"
               onClick={() => setColorPreference(color)}
               disabled={isSubmitting}
             >

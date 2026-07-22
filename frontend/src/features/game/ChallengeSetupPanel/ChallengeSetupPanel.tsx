@@ -20,7 +20,17 @@ import styles from './ChallengeSetupPanel.module.css';
 export interface ChallengeSetupPanelProps {
   className?: string;
   presetFriend?: Friendship;
+  presetUser?: UserSearchResult;
   onChallengeSent?: () => void;
+}
+
+// Normalized shape covering both preset sources (a Friendship or a raw
+// search result), so the rest of the component doesn't need to branch on
+// which one was passed in.
+interface PresetTarget {
+  userId: string;
+  username: string;
+  displayName: string;
 }
 
 const DEFAULT_TIME_CONTROL: TimeControl = {
@@ -33,11 +43,26 @@ const SEARCH_DEBOUNCE_MS = 300;
 export function ChallengeSetupPanel({
   className,
   presetFriend,
+  presetUser,
   onChallengeSent,
 }: ChallengeSetupPanelProps) {
   const { outgoingChallenge, error, sendChallenge } = useChallenge();
 
-  const lockedToFriend = presetFriend !== undefined;
+  const presetTarget: PresetTarget | null = presetFriend
+    ? {
+        userId: presetFriend.otherUserId,
+        username: presetFriend.otherUsername,
+        displayName: presetFriend.otherDisplayName,
+      }
+    : presetUser
+      ? {
+          userId: presetUser.id,
+          username: presetUser.username,
+          displayName: presetUser.displayName,
+        }
+      : null;
+
+  const lockedToTarget = presetTarget !== null;
 
   const [mode, setMode] = useState<ChallengeTargetMode>('friend');
   const [selectedFriend, setSelectedFriend] = useState<Friendship | null>(
@@ -60,7 +85,7 @@ export function ChallengeSetupPanel({
   }, [presetFriend]);
 
   useEffect(() => {
-    if (mode !== 'username' || lockedToFriend) return;
+    if (mode !== 'username' || lockedToTarget) return;
 
     setSelectedUser(null);
 
@@ -83,22 +108,22 @@ export function ChallengeSetupPanel({
     }, SEARCH_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timeoutId);
-  }, [usernameQuery, mode, lockedToFriend]);
+  }, [usernameQuery, mode, lockedToTarget]);
 
   const handleModeChange = useCallback(
     (nextMode: ChallengeTargetMode) => {
-      if (lockedToFriend) return;
+      if (lockedToTarget) return;
       setMode(nextMode);
       setSelectedFriend(null);
       setSelectedUser(null);
       setUsernameQuery('');
       setSearchResults([]);
     },
-    [lockedToFriend]
+    [lockedToTarget]
   );
 
-  const targetUserId = lockedToFriend
-    ? presetFriend!.otherUserId
+  const targetUserId = lockedToTarget
+    ? presetTarget!.userId
     : mode === 'friend'
       ? selectedFriend?.otherUserId ?? null
       : selectedUser?.id ?? null;
@@ -126,11 +151,12 @@ export function ChallengeSetupPanel({
 
   return (
     <div className={`${styles.wrapper} ${className ?? ''}`}>
-      {!lockedToFriend && (
+      {!lockedToTarget && (
         <>
           <div className={styles.modeToggle}>
             <Button
               variant={mode === 'friend' ? 'primary' : 'secondary'}
+              size="sm"
               onClick={() => handleModeChange('friend')}
               disabled={!!outgoingChallenge}
             >
@@ -138,6 +164,7 @@ export function ChallengeSetupPanel({
             </Button>
             <Button
               variant={mode === 'username' ? 'primary' : 'secondary'}
+              size="sm"
               onClick={() => handleModeChange('username')}
               disabled={!!outgoingChallenge}
             >
@@ -203,14 +230,14 @@ export function ChallengeSetupPanel({
         </>
       )}
 
-      {lockedToFriend && (
+      {lockedToTarget && presetTarget && (
         <div className={styles.targetSection}>
           <div className={styles.resultRowSelected}>
             <span className={styles.displayName}>
-              {presetFriend.otherDisplayName}
+              {presetTarget.displayName}
             </span>
             <span className={styles.username}>
-              @{presetFriend.otherUsername}
+              @{presetTarget.username}
             </span>
           </div>
         </div>
@@ -226,6 +253,7 @@ export function ChallengeSetupPanel({
                 variant={
                   preferredColor === color ? 'primary' : 'secondary'
                 }
+                size="sm"
                 onClick={() => setPreferredColor(color)}
                 disabled={!!outgoingChallenge}
               >

@@ -6,12 +6,14 @@ interface AuthStore {
   accessToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  authInitialized: boolean;
 
   setUser: (user: User | null) => void;
   setAccessToken: (token: string | null) => void;
   setLoading: (loading: boolean) => void;
   login: (user: User, token: string) => void;
   logout: () => void;
+  setAuthInitialized: (initialized: boolean) => void;
 }
 
 export const useAuthStore = create<AuthStore>((set) => ({
@@ -19,6 +21,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
   accessToken: null,
   isAuthenticated: false,
   isLoading: false,
+  authInitialized: false,
 
   setUser: (user) =>
     set({
@@ -31,6 +34,9 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   setLoading: (isLoading) =>
     set({ isLoading }),
+
+  setAuthInitialized: (authInitialized) =>
+    set({ authInitialized }),
 
   login: (user, accessToken) =>
     set({
@@ -46,6 +52,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       accessToken: null,
       isAuthenticated: false,
       isLoading: false,
+      authInitialized: false,
     }),
 }));
 

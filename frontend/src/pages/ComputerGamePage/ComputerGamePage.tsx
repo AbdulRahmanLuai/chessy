@@ -2,6 +2,7 @@
 
 import { useParams, Navigate } from 'react-router-dom';
 import ComputerGameRoom from '@/components/chess/ComputerGameRoom';
+import { useEffect } from 'react';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -10,9 +11,13 @@ import ComputerGameRoom from '@/components/chess/ComputerGameRoom';
 
 export default function ComputerGamePage() {
   const { gameId } = useParams<{ gameId: string }>();
+    console.log('ComputerGamePage rendered');
+
+
 
   // If the route somehow fires without a gameId, redirect to setup
   if (!gameId) return <Navigate to="/play/computer" replace />;
 
+  
   return <ComputerGameRoom gameId={gameId} />;
 }

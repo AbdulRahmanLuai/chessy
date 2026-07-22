@@ -39,7 +39,6 @@ export function TimeControlSelector({ value, onChange, disabled = false }: TimeC
 
   return (
     <div className={styles.wrapper}>
-      <span className={styles.hint}>Time control (not yet active)</span>
       {categories.map((category) => {
         const presetsForCategory = PRESETS.filter((preset) => preset.category === category);
         return (

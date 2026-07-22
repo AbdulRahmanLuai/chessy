@@ -38,29 +38,36 @@ export function useComputerGame(gameId: string): UseComputerGameReturn {
   // ─── Load + join game ──────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!currentUser) return;
+  if (!currentUser) return;
 
-    let isActive = true;
-    setLoading(true);
+  let isActive = true;
 
-    const loadGame = async () => {
+  const loadGame = async () => {
+    try {
+      setLoading(true);
+
       const loaded = await computerService.getGame(gameId);
-      console.log('loaded computer game:', loaded);
-      if (isActive) setGame(loaded);
-    };
-    loadGame();
 
-    computerGameSocketService.join(gameId);
-    setLoading(false);
+      if (!isActive) return;
 
-    return () => {
-      isActive = false;
-      computerGameSocketService.leave(gameId);
-      setGame(null);
-      setBotMoveError(null);
-    };
-  }, [gameId, currentUser]);
+      setGame(loaded);
+      computerGameSocketService.join(gameId);
+    } finally {
+      if (isActive) {
+        setLoading(false);
+      }
+    }
+  };
 
+  loadGame();
+
+  return () => {
+    isActive = false;
+    computerGameSocketService.leave(gameId);
+    setGame(null);
+    setBotMoveError(null);
+  };
+}, [gameId, currentUser]);
   // ─── Socket event listeners ────────────────────────────────────────────────
 
   useEffect(() => {

@@ -7,7 +7,6 @@ import { useAuthStore } from '@/store/authStore';
 import type { User } from '@/types';
 import { useSocketConnection } from '@/hooks/useSocketConnection';
 
-
 function mapResponseToUser(data: Awaited<ReturnType<typeof authService.refreshToken>>): User {
   return {
     id: data.userId,
@@ -30,11 +29,9 @@ function SilentRefresh() {
     if (hasTriedRefresh.current) return;
     hasTriedRefresh.current = true;
 
-    // Use getState() — stable, no subscription, no re-render triggers
-    const { login, setLoading } = useAuthStore.getState();
+    const { login, setAuthInitialized } = useAuthStore.getState();
 
     const attemptRefresh = async () => {
-      setLoading(true);
       try {
         const data = await authService.refreshToken();
         const user = mapResponseToUser(data);
@@ -44,18 +41,20 @@ function SilentRefresh() {
       } catch {
         // No valid session — that's fine, stay on current page
       } finally {
-        setLoading(false);
+        console.log('[AUTH INIT] complete');
+        setAuthInitialized(true);
       }
     };
 
     attemptRefresh();
-  }, []); // ← empty: runs exactly once on app mount
+  }, []);
 
   return null;
 }
 
 export default function App() {
   useSocketConnection();
+
   return (
     <>
       <SilentRefresh />
