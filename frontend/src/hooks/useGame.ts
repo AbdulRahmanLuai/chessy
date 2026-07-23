@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/authStore';
 import { gameSocketService } from '@/socket/gameSocketService';
 import { gameService } from '@/services/game.service';
 import { getSocket, onSocketReady } from '@/socket/socket';
+import type { DrawOfferedEvent } from '@/socket/events/game.events';
 
 import type {
   Square,
@@ -83,6 +84,9 @@ export function useGame(gameId: string): UseGameReturn {
       // move applied from server (authoritative)
       const onMoveApplied = (payload: any) => {
         console.log('Move applied from server', payload);
+        // A move supersedes any outstanding draw offer.
+        setDrawOfferSent(false);
+        setDrawOfferReceived(false);
         applyMove(
           payload.move,
           payload.fen,
@@ -91,9 +95,9 @@ export function useGame(gameId: string): UseGameReturn {
         );
       };
 
-      const onDrawOffered = () => {
+      const onDrawOffered = (payload: DrawOfferedEvent) => {
         console.log("Draw offer received from opponent");
-        setDrawOfferReceived(true);
+        setDrawOfferReceived(payload.byUserId !== currentUser?.id);
       };
 
       const onDrawAccepted = () => {
@@ -138,7 +142,7 @@ export function useGame(gameId: string): UseGameReturn {
       unsubscribeReady();
       cleanupListeners?.();
     };
-  }, [applyMove, setResult]);
+  }, [applyMove, setResult, currentUser]);
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
 

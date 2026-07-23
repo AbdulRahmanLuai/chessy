@@ -16,11 +16,13 @@ export const gameService = {
     return res.data;
   },
 
+  async getActiveGame(): Promise<Game | null> {
+    const res = await api.get<Game | null>('/games/active');
+    return res.data;
+  },
 
   async getMoves(gameId: string) {
     const res = await api.get(`/games/${gameId}/moves`);
     return res.data;
   },
-
 };
-

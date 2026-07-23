@@ -20,9 +20,6 @@ export default function ToastContainer() {
   const toasts = useToasts();
   const dismiss = useNotificationStore((s) => s.dismiss);
 
-// TODO: Avoid using useChallenge() here because it registers socket listeners.
-// Extract challenge actions (accept/decline) into a lightweight action hook or service
-// so ToastContainer can trigger domain actions without creating duplicate listeners.
   const { acceptChallenge, declineChallenge } = useChallenge();
 
   // Store keeps notifications oldest-first.

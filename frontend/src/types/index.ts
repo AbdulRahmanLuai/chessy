@@ -98,6 +98,8 @@ export type ResultReason =
   | 'DRAW_AGREEMENT'
   | 'ABORTED';
 
+// NOTE: kept for any other call sites that may still reference it, but
+// `Game` itself does not nest time control under this shape — see below.
 export interface TimeControl {
   initialSeconds: number;
   incrementSeconds: number;
@@ -124,6 +126,11 @@ export interface GameResult {
   reason: ResultReason;
 }
 
+// Matches the actual API payload (flat fields), confirmed via:
+// Object.keys(game) -> ['id', 'whitePlayer', 'blackPlayer', 'status',
+// 'currentFen', 'moves', 'result', 'resultReason', 'timeInitialSeconds',
+// 'timeIncrementSeconds', 'whiteTimeRemainingMs', 'blackTimeRemainingMs',
+// 'lastMoveAt', 'currentPlayerDeadlineAt', 'createdAt', 'finishedAt']
 export interface Game {
   id: string;
   status: GameStatus;
@@ -131,10 +138,12 @@ export interface Game {
   whitePlayer: User;
   blackPlayer: User | null;
   moves: Move[];
-  timeControl: TimeControl;
+  timeInitialSeconds: number;
+  timeIncrementSeconds: number;
   whiteTimeRemainingMs: number;
   blackTimeRemainingMs: number;
   lastMoveAt: string | null;
+  currentPlayerDeadlineAt: string | null;
   result: GameResult | null;
   resultReason: ResultReason | null;
   createdAt: string;
@@ -201,5 +210,3 @@ export interface CreateComputerGameRequest {
   timeIncrementSeconds?: number;
   colorPreference: ColorPreference;
 }
-
-

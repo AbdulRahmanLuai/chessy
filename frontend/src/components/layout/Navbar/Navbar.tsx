@@ -5,6 +5,8 @@ import { ChevronDown, LogOut, User, Users } from 'lucide-react';
 import { ChallengesButton } from '@/features/challenge/ChallengesButton';
 import { FriendsPopover } from '@/features/friends/FriendsPopover';
 import { ChallengeSetupPanel } from '@/features/game/ChallengeSetupPanel';
+import { useIncomingRequestsCount } from '@/store/friendStore';
+import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import type { Friendship, User as UserType, UserSearchResult } from '../../../types';
 import styles from './Navbar.module.css';
@@ -20,6 +22,8 @@ export default function Navbar({ user, onLogout, isLoading = false }: NavbarProp
   const [isFriendsOpen, setIsFriendsOpen] = useState(false);
   const [challengeFriend, setChallengeFriend] = useState<Friendship | null>(null);
   const [challengeUser, setChallengeUser] = useState<UserSearchResult | null>(null);
+
+  const incomingRequestsCount = useIncomingRequestsCount();
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const friendsButtonRef = useRef<HTMLButtonElement>(null);
@@ -74,6 +78,9 @@ export default function Navbar({ user, onLogout, isLoading = false }: NavbarProp
               >
                 <Users size={18} />
                 <span>Friends</span>
+                {incomingRequestsCount > 0 && (
+                  <Badge count={incomingRequestsCount} variant="danger" size="sm" />
+                )}
               </button>
 
               {isFriendsOpen && (

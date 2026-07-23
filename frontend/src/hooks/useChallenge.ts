@@ -1,21 +1,13 @@
 // src/hooks/useChallenge.ts
-import { useEffect, useCallback } from 'react';
-import { getSocket, onSocketReady } from '@/socket/socket';
+import { useCallback } from 'react';
 import { challengeSocketService } from '@/socket/challengeSocketService';
-import { useNotificationStore } from '@/store/notificationStore';
 import {
   useChallengeStore,
   useOutgoingChallenge,
   useIncomingChallenges,
   useChallengeError,
 } from '@/store/challengeStore';
-import type {
-  ChallengeSentEvent,
-  ChallengeReceivedEvent,
-  ChallengeAcceptedEvent,
-  ChallengeEndedEvent,
-  PreferredColor,
-} from '@/socket/events';
+import type { PreferredColor } from '@/socket/events';
 
 interface UseChallengeReturn {
   outgoingChallenge: ReturnType<typeof useOutgoingChallenge>;
@@ -36,110 +28,38 @@ interface UseChallengeReturn {
   clearAcceptedGameId: () => void;
 }
 
+// ─── Reads + actions — calls service directly, no socket listeners ─────────
+//
+// Socket events are handled exclusively by useChallengeSocketEvents, mounted
+// once in AppLayout. This hook can be safely used by any number of
+// components (ChallengesButton, ToastContainer, etc.) without registering
+// duplicate listeners or emitting redundant challenge:requestPending calls.
 export function useChallenge(): UseChallengeReturn {
   const outgoingChallenge = useOutgoingChallenge();
   const incomingChallenges = useIncomingChallenges();
   const error = useChallengeError();
   const acceptedGameId = useChallengeStore((s) => s.acceptedGameId);
 
-  const setOutgoingChallenge = useChallengeStore((s) => s.setOutgoingChallenge);
-  const clearOutgoingChallenge = useChallengeStore((s) => s.clearOutgoingChallenge);
-  const addIncomingChallenge = useChallengeStore((s) => s.addIncomingChallenge);
   const removeIncomingChallenge = useChallengeStore((s) => s.removeIncomingChallenge);
-  const setAcceptedGameId = useChallengeStore((s) => s.setAcceptedGameId);
+  const clearOutgoingChallenge = useChallengeStore((s) => s.clearOutgoingChallenge);
   const clearAcceptedGameId = useChallengeStore((s) => s.clearAcceptedGameId);
-  const setError = useChallengeStore((s) => s.setError);
-  const pushToast = useNotificationStore((s) => s.push);
-
-  // ─── Socket event listeners ────────────────────────────────────────────────
-
-  useEffect(() => {
-    let cleanupListeners: (() => void) | null = null;
-
-    const setupListeners = () => {
-      const socket = getSocket();
-      if (!socket) return;
-
-      const onChallengeSent = (payload: ChallengeSentEvent) => {
-        setOutgoingChallenge(payload);
-      };
-
-      const onChallengeReceived = (payload: ChallengeReceivedEvent) => {
-        console.log('Received challenge:', payload);
-        addIncomingChallenge(payload);
-
-        pushToast({
-          kind: 'challenge',
-          challengeId: payload.challengeId,
-          fromUsername: payload.fromUsername,
-          fromDisplayName: payload.fromDisplayName,
-        });
-      };
-
-      const onChallengeAccepted = (payload: ChallengeAcceptedEvent) => {
-        clearOutgoingChallenge();
-        removeIncomingChallenge(payload.challengeId);
-        setAcceptedGameId(payload.gameId);
-      };
-
-      const onChallengeEnded = (payload: ChallengeEndedEvent) => {
-        clearOutgoingChallenge();
-        removeIncomingChallenge(payload.challengeId);
-      };
-
-      const onChallengeError = (message: string) => {
-        setError(message);
-      };
-
-      socket.on('challenge:sent', onChallengeSent);
-      socket.on('challenge:received', onChallengeReceived);
-      socket.on('challenge:accepted', onChallengeAccepted);
-      socket.on('challenge:ended', onChallengeEnded);
-      socket.on('challenge:error', onChallengeError);
-
-      cleanupListeners = () => {
-        socket.off('challenge:sent', onChallengeSent);
-        socket.off('challenge:received', onChallengeReceived);
-        socket.off('challenge:accepted', onChallengeAccepted);
-        socket.off('challenge:ended', onChallengeEnded);
-        socket.off('challenge:error', onChallengeError);
-      };
-    };
-
-    const unsubscribeReady = onSocketReady(setupListeners);
-
-    return () => {
-      unsubscribeReady?.();
-      cleanupListeners?.();
-    };
-  }, [
-    setOutgoingChallenge,
-    addIncomingChallenge,
-    clearOutgoingChallenge,
-    removeIncomingChallenge,
-    setAcceptedGameId,
-    setError,
-    pushToast,
-  ]);
-
-  // ─── Actions ────────────────────────────────────────────────────────────────
 
   const sendChallenge = useCallback(
-  (
-    challengedUserId: string,
-    timeLimitSeconds: number,
-    incrementSeconds = 0,
-    preferredColor: PreferredColor = 'RANDOM'
-  ) => {
-    challengeSocketService.send(
-      challengedUserId,
-      timeLimitSeconds,
-      incrementSeconds,
-      preferredColor
-    );
-  },
-  []
-);
+    (
+      challengedUserId: string,
+      timeLimitSeconds: number,
+      incrementSeconds = 0,
+      preferredColor: PreferredColor = 'RANDOM'
+    ) => {
+      challengeSocketService.send(
+        challengedUserId,
+        timeLimitSeconds,
+        incrementSeconds,
+        preferredColor
+      );
+    },
+    []
+  );
 
   const acceptChallenge = useCallback((challengeId: string) => {
     challengeSocketService.accept(challengeId);
@@ -150,7 +70,7 @@ export function useChallenge(): UseChallengeReturn {
       challengeSocketService.decline(challengeId);
       removeIncomingChallenge(challengeId);
     },
-    [removeIncomingChallenge],
+    [removeIncomingChallenge]
   );
 
   const cancelChallenge = useCallback(() => {

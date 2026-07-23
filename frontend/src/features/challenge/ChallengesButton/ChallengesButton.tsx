@@ -86,7 +86,7 @@ export function ChallengesButton({ className, onChallengeUser }: ChallengesButto
       >
         <Swords size={18} />
         <span>Challenge</span>
-        {count > 0 && <Badge count={count} />}
+       {count > 0 && <Badge count={count} variant="danger" size="sm" />}
       </button>
 
       {isOpen && (

@@ -10,7 +10,7 @@ export default function GamePage() {
   const { gameId } = useParams<{ gameId: string }>();
 
   // If the route somehow fires without a gameId, redirect to lobby
-  if (!gameId) return <Navigate to="/lobby" replace />;
+  if (!gameId) return <Navigate to="/play/online" replace />;
 
   return <GameRoom gameId={gameId} />;
 }

@@ -13,9 +13,10 @@ function send(
 ) {
   const payload: SendChallengePayload = {
     challengedUserId,
-    preferredColor,
     timeLimitSeconds,
     incrementSeconds,
+    preferredColor,
+
   };
 
   emitWhenReady('challenge:send', payload);

@@ -92,7 +92,9 @@ function resolveWinnerId(
 ): string | null {
   if (result === '1-0') return userColor === 'WHITE' ? currentUserId : BOT_USER_ID;
   if (result === '0-1') return userColor === 'BLACK' ? currentUserId : BOT_USER_ID;
-  return null; // "1/2-1/2" or unrecognized → treat as draw
+  if (result === '1/2-1/2' || result === null) return null; // draw
+
+  return null;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -121,6 +123,9 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
   const [isBoardFlipped,    setIsBoardFlipped]    = useState(false);
   const [isResignModalOpen, setIsResignModalOpen] = useState(false);
   const [isAbortModalOpen,  setIsAbortModalOpen]  = useState(false);
+  const [showResult, setShowResult] = useState(true);
+
+ 
 
   // ── Derived: which color am I? ────────────────────────────────────────────
   const myColor = useMemo<Color>(() => {
@@ -163,7 +168,7 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
     ? (myColor === 'white' ? 'black' : 'white')
     : myColor;
 
-  const isGameOver = !!game && game.status === 'COMPLETED';
+  const isGameOver = !!game && (game.status === 'COMPLETED' || game.status === 'ABORTED');
 
   const isMyTurn = game?.status === 'IN_PROGRESS' && turn === myColor;
 
@@ -181,12 +186,26 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
   const canAbort = !!game && game.moves.length < 2 && game.status === 'IN_PROGRESS';
 
   const gameResult = useMemo(() => {
-    if (!game || !currentUser || game.status !== 'COMPLETED') return null;
+  if (!game || !currentUser || !isGameOver) return null;
+
+  if (game.status === 'ABORTED') {
     return {
-      winner: resolveWinnerId(game.result, game.userColor, currentUser.id),
-      reason: (game.resultReason ?? 'CHECKMATE') as ResultReason,
+      winner: null,
+      reason: 'ABORTED' as ResultReason,
     };
-  }, [game, currentUser]);
+  }
+
+  return {
+    winner: resolveWinnerId(game.result, game.userColor, currentUser.id),
+    reason: (game.resultReason ?? 'CHECKMATE') as ResultReason,
+  };
+}, [game, currentUser, isGameOver]);
+
+   useEffect(() => {
+    if (isGameOver) {
+      setShowResult(true);
+    }
+  }, [game?.id, isGameOver]); 
 
   // ── Resign handlers ──────────────────────────────────────────────────────
   function confirmResign() {
@@ -230,15 +249,6 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
           anchorTimestamp={game.lastMoveAt ?? game.createdAt}
         />
 
-        {botMoveError && (
-          <div className={styles.botMoveErrorBanner}>
-            <span>{botMoveError}</span>
-            <Button variant="ghost" onClick={clearBotMoveError}>
-              Dismiss
-            </Button>
-          </div>
-        )}
-
         <div className={styles.boardWrapper}>
           <Board
             fen={game.currentFen}
@@ -266,13 +276,21 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
 
         <GameControls
           onResign={() => setIsResignModalOpen(true)}
-          onOfferDraw={() => {}}
+          onOfferDraw={() => undefined}
           onFlipBoard={() => setIsBoardFlipped((f) => !f)}
           onAbort={() => setIsAbortModalOpen(true)}
           canAbort={canAbort}
           canOfferDraw={false}
           drawOfferPending={false}
           isGameOver={isGameOver}
+          statusContent={botMoveError ? (
+            <div className={styles.botMoveErrorBanner} role="alert" aria-live="polite">
+              <span>{botMoveError}</span>
+              <Button variant="ghost" size="sm" onClick={clearBotMoveError}>
+                Dismiss
+              </Button>
+            </div>
+          ) : undefined}
         />
       </aside>
 
@@ -317,15 +335,16 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
       />
 
       {/* ── Game result ───────────────────────────────────────────────────── */}
-      {isGameOver && gameResult && (
-        <GameResult
-          result={gameResult}
-          myColor={myColor}
-          players={[whiteGamePlayer, blackGamePlayer]}
-          onPlayAgain={() => navigate('/play/computer')}
-          onReturnToLobby={() => navigate('/lobby')}
-        />
-      )}
+      {isGameOver && gameResult && showResult && (
+              <GameResult
+                result={gameResult}
+                myColor={myColor}
+                players={[whiteGamePlayer, blackGamePlayer]}
+                onPlayAgain={() => navigate('/play/computer')}
+                onReturnToLobby={() => navigate('/lobby')}
+                onClose={() => setShowResult(false)}
+              />
+            )}
     </div>
   );
 }

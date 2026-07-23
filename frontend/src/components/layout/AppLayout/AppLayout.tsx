@@ -1,6 +1,8 @@
 // src/components/layout/AppLayout/AppLayout.tsx
 
 import { useAcceptedChallengeRedirect } from '@/hooks/useAcceptedChallengeRedirect';
+import { useFriendSocketEvents } from '@/hooks/useFriendSocketEvents';
+import { useChallengeSocketEvents } from '@/hooks/useChallengeSocketEvents';
 import Navbar from '../Navbar';
 import { WaitingForOpponent }from '@/features/game/WaitingForOpponent';
 import type { NavbarProps } from '../Navbar';
@@ -30,6 +32,8 @@ export default function AppLayout({
   // Global listener: whenever a challenge is accepted,
   // navigate to the game.
   useAcceptedChallengeRedirect();
+  useFriendSocketEvents();
+  useChallengeSocketEvents();
 
   return (
     <div className={styles.root}>

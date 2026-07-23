@@ -19,12 +19,22 @@ interface FriendStore {
   outgoingRequestsVersion: number;
   friendsVersion: number;
 
+  // Live count of pending incoming requests, kept in sync directly by
+  // useFriendSocketEvents (+ the accept/decline actions in useFriends).
+  // Unlike the version counters above, this is a real number a badge can
+  // render without any component needing to be mounted to refetch a list.
+  incomingRequestsCount: number;
+
   setNotification: (notification: FriendNotification) => void;
   clearNotification: () => void;
 
   bumpIncomingRequests: () => void;
   bumpOutgoingRequests: () => void;
   bumpFriends: () => void;
+
+  setIncomingRequestsCount: (count: number) => void;
+  incrementIncomingRequestsCount: () => void;
+  decrementIncomingRequestsCount: () => void;
 
   setError: (message: string | null) => void;
   reset: () => void;
@@ -38,6 +48,8 @@ export const useFriendStore = create<FriendStore>((set) => ({
   outgoingRequestsVersion: 0,
   friendsVersion: 0,
 
+  incomingRequestsCount: 0,
+
   setNotification: (notification) => set({ latestNotification: notification }),
   clearNotification: () => set({ latestNotification: null }),
 
@@ -48,6 +60,12 @@ export const useFriendStore = create<FriendStore>((set) => ({
   bumpFriends: () =>
     set((state) => ({ friendsVersion: state.friendsVersion + 1 })),
 
+  setIncomingRequestsCount: (count) => set({ incomingRequestsCount: Math.max(0, count) }),
+  incrementIncomingRequestsCount: () =>
+    set((state) => ({ incomingRequestsCount: state.incomingRequestsCount + 1 })),
+  decrementIncomingRequestsCount: () =>
+    set((state) => ({ incomingRequestsCount: Math.max(0, state.incomingRequestsCount - 1) })),
+
   setError: (message) => set({ error: message }),
 
   reset: () =>
@@ -57,6 +75,7 @@ export const useFriendStore = create<FriendStore>((set) => ({
       incomingRequestsVersion: 0,
       outgoingRequestsVersion: 0,
       friendsVersion: 0,
+      incomingRequestsCount: 0,
     }),
 }));
 
@@ -66,3 +85,4 @@ export const useFriendError = () => useFriendStore((s) => s.error);
 export const useIncomingRequestsVersion = () => useFriendStore((s) => s.incomingRequestsVersion);
 export const useOutgoingRequestsVersion = () => useFriendStore((s) => s.outgoingRequestsVersion);
 export const useFriendsVersion = () => useFriendStore((s) => s.friendsVersion);
+export const useIncomingRequestsCount = () => useFriendStore((s) => s.incomingRequestsCount);

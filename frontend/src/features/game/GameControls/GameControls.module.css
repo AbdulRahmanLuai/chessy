@@ -12,6 +12,12 @@
   border-radius: var(--radius-md);
 }
 
+/* ─── Contextual status ─────────────────────────────────────────────────────── */
+
+.status {
+  width: 100%;
+}
+
 /* ─── Flip button ─────────────────────────────────────────────────────────────── */
 
 /* Flip sits above the divider and is visually lighter than the action buttons */

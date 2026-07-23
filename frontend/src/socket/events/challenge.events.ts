@@ -19,6 +19,8 @@ export interface RespondChallengePayload {
 }
 
 export interface ChallengeClientToServerEvents {
+  /** Requests all active challenges after the client has installed its listeners. */
+  'challenge:requestPending': () => void;
   'challenge:send': (payload: SendChallengePayload) => void;
   'challenge:accept': (payload: RespondChallengePayload) => void;
   'challenge:decline': (payload: RespondChallengePayload) => void;

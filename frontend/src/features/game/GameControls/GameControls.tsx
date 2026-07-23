@@ -1,4 +1,5 @@
 import { Flag, Handshake, FlipVertical2, Ban } from 'lucide-react';
+import type { ReactNode } from 'react';
 import Button from '@/components/ui/Button';
 import styles from './GameControls.module.css';
 
@@ -42,6 +43,9 @@ export interface GameControlsProps {
    * Flip board remains available at all times.
    */
   isGameOver: boolean;
+
+  /** Contextual game status shown within the controls panel. */
+  statusContent?: ReactNode;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -55,9 +59,12 @@ export default function GameControls({
   drawOfferPending,
   canAbort,
   isGameOver,
+  statusContent,
 }: GameControlsProps) {
   return (
     <div className={styles.root} role="group" aria-label="Game controls">
+
+      {statusContent && <div className={styles.status}>{statusContent}</div>}
 
       {/* ── Flip board — always available ─────────────────────────────────── */}
       <Button

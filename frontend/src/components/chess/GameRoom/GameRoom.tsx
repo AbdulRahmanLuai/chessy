@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Board             from '@/components/chess/Board';
 import PlayerStrip       from '@/components/chess/PlayerStrip';
@@ -12,8 +12,10 @@ import Spinner           from '@/components/ui/Spinner';
 import { useAuthStore }  from '@/store/authStore';
 import { useGameStore }  from '@/store/gameStore';
 import { useGame }       from '@/hooks/useGame';
+import { useChallenge }  from '@/hooks/useChallenge';
 import { getActiveColor } from '@/utils/turn';
 import type { Color, GamePlayer, Square } from '@/types';
+import type { PreferredColor } from '@/socket/events';
 import styles from './GameRoom.module.css';
 import { Chess } from 'chess.js';
 
@@ -71,10 +73,19 @@ export default function GameRoom({ gameId }: GameRoomProps) {
     drawOfferSent,
   } = useGame(gameId);
 
+  const { sendChallenge, outgoingChallenge } = useChallenge();
+
   // ── Local UI state ───────────────────────────────────────────────────────
   const [isBoardFlipped,    setIsBoardFlipped]    = useState(false);
   const [isResignModalOpen, setIsResignModalOpen] = useState(false);
   const [isAbortModalOpen,  setIsAbortModalOpen]  = useState(false);
+  const [showResult, setShowResult] = useState(true);
+
+  // ── Rematch: derived from the shared outgoing-challenge state ────────────
+  // A rematch is just a challenge, so we reuse useChallenge()'s tracking
+  // rather than re-deriving our own — no separate listeners, no separate slot.
+  const [rematchSecondsLeft, setRematchSecondsLeft] = useState<number | null>(null);
+  const rematchPending = !!outgoingChallenge;
 
   // ── Derived: which color am I? ────────────────────────────────────────────
   const myColor = useMemo<Color>(() => {
@@ -130,6 +141,30 @@ export default function GameRoom({ gameId }: GameRoomProps) {
   const canAbort     = !!game && game.moves.length < 2 && game.status === 'IN_PROGRESS';
   const canOfferDraw = !!game && game.status === 'IN_PROGRESS';
 
+  useEffect(() => {
+  if (isGameOver) {
+    setShowResult(true);
+  }
+}, [game?.id, isGameOver]);
+
+  // ── Rematch: countdown tick until the challenge expires ───────────────────
+  useEffect(() => {
+    const expiresAt = outgoingChallenge?.expiresAtEpochMs ?? null;
+
+    if (expiresAt === null) {
+      setRematchSecondsLeft(null);
+      return;
+    }
+
+    const tick = () => {
+      setRematchSecondsLeft(Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)));
+    };
+
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [outgoingChallenge?.expiresAtEpochMs]);
+
   // ── Resign handlers ──────────────────────────────────────────────────────
   function confirmResign() {
     handleResign();
@@ -165,6 +200,23 @@ export default function GameRoom({ gameId }: GameRoomProps) {
   const bottomPlayer = boardOrientation === 'white' ? whiteGamePlayer : blackGamePlayer;
   const topPlayer    = boardOrientation === 'white' ? blackGamePlayer : whiteGamePlayer;
 
+  function sendRematchRequest(): void {
+    if (!game || rematchPending) return;
+    const opponent = myColor === 'white' ? game.blackPlayer : game.whitePlayer;
+    if (!opponent) return;
+
+    // Rematch convention: swap colors from the just-finished game.
+    const previousColor: PreferredColor = myColor === 'white' ? 'WHITE' : 'BLACK';
+    const preferredColor: PreferredColor = previousColor === 'WHITE' ? 'BLACK' : 'WHITE';
+
+    sendChallenge(
+      opponent.id,
+      game.timeInitialSeconds,
+      game.timeIncrementSeconds,
+      preferredColor,
+    );
+  }
+
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
@@ -178,13 +230,6 @@ export default function GameRoom({ gameId }: GameRoomProps) {
           isActive={turn !== myColor}
           anchorTimestamp={game.lastMoveAt ?? game.createdAt}
         />
-
-        {drawOfferReceived && (
-          <DrawOfferBanner
-            onAccept={handleAcceptDraw}
-            onDecline={handleDeclineDraw}
-          />
-        )}
 
         <div className={styles.boardWrapper}>
           <Board
@@ -220,6 +265,12 @@ export default function GameRoom({ gameId }: GameRoomProps) {
           canOfferDraw={canOfferDraw}
           drawOfferPending={drawOfferSent}
           isGameOver={isGameOver}
+          statusContent={drawOfferReceived ? (
+            <DrawOfferBanner
+              onAccept={handleAcceptDraw}
+              onDecline={handleDeclineDraw}
+            />
+          ) : undefined}
         />
       </aside>
 
@@ -264,13 +315,23 @@ export default function GameRoom({ gameId }: GameRoomProps) {
       />
 
       {/* ── Game result ───────────────────────────────────────────────────── */}
-      {isGameOver && game.result && (
+      {isGameOver && showResult && (
         <GameResult
-          result={game.result}
+          result={
+            game.status === 'ABORTED'
+              ? {
+                  winner: null,
+                  reason: 'ABORTED',
+                }
+              : game.result!
+          }
           myColor={myColor}
           players={[whiteGamePlayer, blackGamePlayer]}
-          onPlayAgain={() => navigate('/lobby')}
+          onPlayAgain={sendRematchRequest}
+          rematchPending={rematchPending}
+          rematchSecondsRemaining={rematchSecondsLeft}
           onReturnToLobby={() => navigate('/lobby')}
+          onClose={() => setShowResult(false)}
         />
       )}
     </div>

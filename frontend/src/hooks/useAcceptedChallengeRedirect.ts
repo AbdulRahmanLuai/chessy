@@ -16,7 +16,7 @@ export function useAcceptedChallengeRedirect(): void {
 
   useEffect(() => {
     if (!acceptedGameId) return;
-    navigate(`/game/${acceptedGameId}`);
+    navigate(`/game/${acceptedGameId}`, { replace: true });
     clearAcceptedGameId();
   }, [acceptedGameId, navigate, clearAcceptedGameId]);
 }

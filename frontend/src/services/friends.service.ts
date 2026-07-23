@@ -46,7 +46,7 @@ export const friendsService = {
   },
 
   async cancelOutgoingRequest(friendshipId: string): Promise<void> {
-    await api.post(`friends/requests/${friendshipId}/decline`);
+    await api.post(`friends/requests/${friendshipId}/cancel`);
   },
 
   async removeFriend(friendshipId: string): Promise<void> {

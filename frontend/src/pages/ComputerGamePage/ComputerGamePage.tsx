@@ -2,7 +2,6 @@
 
 import { useParams, Navigate } from 'react-router-dom';
 import ComputerGameRoom from '@/components/chess/ComputerGameRoom';
-import { useEffect } from 'react';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
