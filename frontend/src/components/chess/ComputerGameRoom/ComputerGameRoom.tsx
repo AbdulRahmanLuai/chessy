@@ -1,10 +1,11 @@
 // src/components/chess/ComputerGameRoom/ComputerGameRoom.tsx
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Board             from '@/components/chess/Board';
 import PlayerStrip       from '@/components/chess/PlayerStrip';
 import MoveList          from '@/components/chess/MoveList';
+import MoveNavigator     from '@/components/chess/MoveNavigator/MoveNavigator';
 import GameControls      from '@/features/game/GameControls/GameControls';
 import GameResult        from '@/features/game/GameResult/GameResult';
 import Modal             from '@/components/ui/Modal';
@@ -13,7 +14,8 @@ import Spinner           from '@/components/ui/Spinner';
 import { useAuthStore }  from '@/store/authStore';
 import { useComputerGameStore } from '@/store/computerGameStore';
 import { useComputerGame } from '@/hooks/useComputerGame';
-import { getActiveColor } from '@/utils/turn';
+import { useMoveNavigation } from '@/hooks/useMoveNavigation';
+import { getActiveColor } from '@/utils/chess';
 import type {
   Color,
   GamePlayer,
@@ -103,7 +105,6 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
   console.log('ComputerGameRoom rendered');
 
   const navigate = useNavigate();
-  
 
   // ── Store access ─────────────────────────────────────────────────────────
   const currentUser = useAuthStore((s) => s.user);
@@ -119,13 +120,24 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
     clearBotMoveError,
   } = useComputerGame(gameId);
 
+  // ── Move navigation (analysis / history browsing) ───────────────────────
+  const {
+    viewedPly,
+    setViewedPly,
+    fen: viewedFen,
+    isAtStart,
+    isAtEnd,
+    goFirst,
+    goPrev,
+    goNext,
+    goLast,
+  } = useMoveNavigation(game?.moves ?? []);
+
   // ── Local UI state ───────────────────────────────────────────────────────
   const [isBoardFlipped,    setIsBoardFlipped]    = useState(false);
   const [isResignModalOpen, setIsResignModalOpen] = useState(false);
   const [isAbortModalOpen,  setIsAbortModalOpen]  = useState(false);
   const [showResult, setShowResult] = useState(true);
-
- 
 
   // ── Derived: which color am I? ────────────────────────────────────────────
   const myColor = useMemo<Color>(() => {
@@ -172,34 +184,35 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
 
   const isMyTurn = game?.status === 'IN_PROGRESS' && turn === myColor;
 
+  // ── Derived: viewed-ply position (drives board + highlights) ─────────────
   const lastMove = useMemo(() => {
-    if (!game || game.moves.length === 0) return null;
-    const last = game.moves[game.moves.length - 1];
-    return { from: last.from as Square, to: last.to as Square };
-  }, [game]);
+    if (!game || viewedPly < 0) return null;
+    const m = game.moves[viewedPly];
+    return m ? { from: m.from as Square, to: m.to as Square } : null;
+  }, [game, viewedPly]);
 
   const checkSquare = useMemo<Square | null>(() => {
-    if (!game || game.status !== 'IN_PROGRESS') return null;
-    return findCheckSquare(game.currentFen);
-  }, [game]);
+    if (!game) return null;
+    return findCheckSquare(viewedFen);
+  }, [game, viewedFen]);
 
   const canAbort = !!game && game.moves.length < 2 && game.status === 'IN_PROGRESS';
 
-  const gameResult = useMemo(() => {
-  if (!game || !currentUser || !isGameOver) return null;
+    const gameResult = useMemo(() => {
+    if (!game || !currentUser || !isGameOver) return null;
 
-  if (game.status === 'ABORTED') {
+    if (game.status === 'ABORTED') {
+      return {
+        winner: null,
+        reason: 'ABORTED' as ResultReason,
+      };
+    }
+
     return {
-      winner: null,
-      reason: 'ABORTED' as ResultReason,
+      winner: resolveWinnerId(game.result, game.userColor, currentUser.id),
+      reason: (game.resultReason ?? 'CHECKMATE') as ResultReason,
     };
-  }
-
-  return {
-    winner: resolveWinnerId(game.result, game.userColor, currentUser.id),
-    reason: (game.resultReason ?? 'CHECKMATE') as ResultReason,
-  };
-}, [game, currentUser, isGameOver]);
+  }, [game, currentUser, isGameOver]);
 
    useEffect(() => {
     if (isGameOver) {
@@ -251,12 +264,12 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
 
         <div className={styles.boardWrapper}>
           <Board
-            fen={game.currentFen}
+            fen={viewedFen}
             orientation={boardOrientation}
             onMoveAttempt={handleMoveAttempt}
             lastMove={lastMove}
             checkSquare={checkSquare}
-            disabled={!isMyTurn || isGameOver}
+            disabled={!isMyTurn || isGameOver || !isAtEnd}
           />
         </div>
 
@@ -271,7 +284,18 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
       <aside className={styles.sidebar}>
         <MoveList
           moves={game.moves}
+          currentMoveIndex={viewedPly}
+          onMoveClick={setViewedPly}
           className={styles.moveList}
+        />
+
+        <MoveNavigator
+          isAtStart={isAtStart}
+          isAtEnd={isAtEnd}
+          onFirst={goFirst}
+          onPrev={goPrev}
+          onNext={goNext}
+          onLast={goLast}
         />
 
         <GameControls
@@ -336,15 +360,15 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
 
       {/* ── Game result ───────────────────────────────────────────────────── */}
       {isGameOver && gameResult && showResult && (
-              <GameResult
-                result={gameResult}
-                myColor={myColor}
-                players={[whiteGamePlayer, blackGamePlayer]}
-                onPlayAgain={() => navigate('/play/computer')}
-                onReturnToLobby={() => navigate('/lobby')}
-                onClose={() => setShowResult(false)}
-              />
-            )}
+        <GameResult
+          result={gameResult}
+          myColor={myColor}
+          players={[whiteGamePlayer, blackGamePlayer]}
+          onPlayAgain={() => navigate('/play/computer')}
+          onReturnToLobby={() => navigate('/lobby')}
+          onClose={() => setShowResult(false)}
+        />
+      )}
     </div>
   );
 }

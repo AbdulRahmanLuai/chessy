@@ -1,8 +1,11 @@
+// src/components/chess/GameRoom/GameRoom.tsx
+
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Board             from '@/components/chess/Board';
 import PlayerStrip       from '@/components/chess/PlayerStrip';
 import MoveList          from '@/components/chess/MoveList';
+import MoveNavigator     from '@/components/chess/MoveNavigator/MoveNavigator';
 import GameControls      from '@/features/game/GameControls/GameControls';
 import GameResult        from '@/features/game/GameResult/GameResult';
 import DrawOfferBanner   from '@/features/game/DrawOfferBanner';
@@ -13,7 +16,8 @@ import { useAuthStore }  from '@/store/authStore';
 import { useGameStore }  from '@/store/gameStore';
 import { useGame }       from '@/hooks/useGame';
 import { useChallenge }  from '@/hooks/useChallenge';
-import { getActiveColor } from '@/utils/turn';
+import { useMoveNavigation } from '@/hooks/useMoveNavigation';
+import { getActiveColor } from '@/utils/chess';
 import type { Color, GamePlayer, Square } from '@/types';
 import type { PreferredColor } from '@/socket/events';
 import styles from './GameRoom.module.css';
@@ -73,6 +77,19 @@ export default function GameRoom({ gameId }: GameRoomProps) {
     drawOfferSent,
   } = useGame(gameId);
 
+  // ── Move navigation (analysis / history browsing) ───────────────────────
+  const {
+    viewedPly,
+    setViewedPly,
+    fen: viewedFen,
+    isAtStart,
+    isAtEnd,
+    goFirst,
+    goPrev,
+    goNext,
+    goLast,
+  } = useMoveNavigation(game?.moves ?? []);
+
   const { sendChallenge, outgoingChallenge } = useChallenge();
 
   // ── Local UI state ───────────────────────────────────────────────────────
@@ -129,25 +146,26 @@ export default function GameRoom({ gameId }: GameRoomProps) {
   const isMyTurn = isInProgress && turn === myColor;
   const isOpponentTurn = isInProgress && turn !== myColor;
 
+  // ── Derived: viewed-ply position (drives board + highlights) ─────────────
   const lastMove = useMemo(() => {
-    if (!game || game.moves.length === 0) return null;
-    const last = game.moves[game.moves.length - 1];
-    return { from: last.from as Square, to: last.to as Square };
-  }, [game]);
+    if (!game || viewedPly < 0) return null;
+    const m = game.moves[viewedPly];
+    return m ? { from: m.from as Square, to: m.to as Square } : null;
+  }, [game, viewedPly]);
 
   const checkSquare = useMemo<Square | null>(() => {
-    if (!game || game.status !== 'IN_PROGRESS') return null;
-    return findCheckSquare(game.currentFen);
-  }, [game]);
+    if (!game) return null;
+    return findCheckSquare(viewedFen);
+  }, [game, viewedFen]);
 
   const canAbort     = !!game && game.moves.length < 2 && game.status === 'IN_PROGRESS';
   const canOfferDraw = !!game && game.status === 'IN_PROGRESS';
 
   useEffect(() => {
-  if (isGameOver) {
-    setShowResult(true);
-  }
-}, [game?.id, isGameOver]);
+    if (isGameOver) {
+      setShowResult(true);
+    }
+  }, [game?.id, isGameOver]);
 
   // ── Rematch: countdown tick until the challenge expires ───────────────────
   useEffect(() => {
@@ -227,20 +245,20 @@ export default function GameRoom({ gameId }: GameRoomProps) {
       {/* ── Board column ─────────────────────────────────────────────────── */}
       <div className={styles.boardColumn}>
 
-          <PlayerStrip
-            player={topPlayer}
-            isActive={isOpponentTurn && !isGameOver}
-            anchorTimestamp={game.lastMoveAt ?? game.createdAt}
-          />
+        <PlayerStrip
+          player={topPlayer}
+          isActive={isOpponentTurn && !isGameOver}
+          anchorTimestamp={game.lastMoveAt ?? game.createdAt}
+        />
 
         <div className={styles.boardWrapper}>
           <Board
-            fen={game.currentFen}
+            fen={viewedFen}
             orientation={boardOrientation}
             onMoveAttempt={handleMoveAttempt}
             lastMove={lastMove}
             checkSquare={checkSquare}
-            disabled={!isMyTurn || isGameOver}
+            disabled={!isMyTurn || isGameOver || !isAtEnd}
           />
         </div>
 
@@ -255,7 +273,18 @@ export default function GameRoom({ gameId }: GameRoomProps) {
       <aside className={styles.sidebar}>
         <MoveList
           moves={game.moves}
+          currentMoveIndex={viewedPly}
+          onMoveClick={setViewedPly}
           className={styles.moveList}
+        />
+
+        <MoveNavigator
+          isAtStart={isAtStart}
+          isAtEnd={isAtEnd}
+          onFirst={goFirst}
+          onPrev={goPrev}
+          onNext={goNext}
+          onLast={goLast}
         />
 
         <GameControls
