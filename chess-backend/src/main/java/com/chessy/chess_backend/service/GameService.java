@@ -2,6 +2,7 @@ package com.chessy.chess_backend.service;
 
 import com.chessy.chess_backend.controller.socketio.game.event.MoveAppliedEvent;
 import com.chessy.chess_backend.controller.socketio.game.payload.MovePayload;
+import com.chessy.chess_backend.dto.computerGame.ComputerGameDto;
 import com.chessy.chess_backend.model.enums.gameGeneral.GameResultReason;
 import com.chessy.chess_backend.dto.gameGeneral.MoveListDto;
 import com.chessy.chess_backend.dto.onlineGame.*;
@@ -42,6 +43,14 @@ public class GameService {
     private final MoveMapper moveMapper;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+
+    @Transactional(readOnly = true)
+    public Optional<GameDto> getActiveGame(UUID userId) {
+        return gameRepository.findActiveGame(userId, GameStatus.IN_PROGRESS)
+                .stream()
+                .findFirst()
+                .map(gameMapper::toDto);
+    }
 
     public CreateGameResponseDto createGame(UUID whitePlayerId, UUID blackPlayerId, int timeLimitSeconds, int incrementSeconds) {
 
@@ -236,6 +245,8 @@ public class GameService {
         game.setMoveVersion(readMoveVersion + 1);
         game.setDrawVersion(game.getDrawVersion() + 1);
 
+        Instant movedAt = game.getLastMoveAt();
+
         GameEndResult endResult = null;
         if (isTerminal) {
             game.setStatus(newStatus);
@@ -253,7 +264,8 @@ public class GameService {
                 new MoveAppliedEvent.MoveDetail(payload.getFrom(), payload.getTo(), payload.getPromotion(), san),
                 game.getCurrentFen(),
                 whiteTimeRemainingMs,
-                blackTimeRemainingMs
+                blackTimeRemainingMs,
+                movedAt.toString()
         );
 
         return new GameMoveResult(gameMapper.toDto(game), event, endResult);

@@ -125,7 +125,9 @@ export default function GameRoom({ gameId }: GameRoomProps) {
     game.status === 'COMPLETED' || game.status === 'ABORTED'
   );
 
-  const isMyTurn = game?.status === 'IN_PROGRESS' && turn === myColor;
+  const isInProgress = game?.status === 'IN_PROGRESS';
+  const isMyTurn = isInProgress && turn === myColor;
+  const isOpponentTurn = isInProgress && turn !== myColor;
 
   const lastMove = useMemo(() => {
     if (!game || game.moves.length === 0) return null;
@@ -225,11 +227,11 @@ export default function GameRoom({ gameId }: GameRoomProps) {
       {/* ── Board column ─────────────────────────────────────────────────── */}
       <div className={styles.boardColumn}>
 
-                <PlayerStrip
-          player={topPlayer}
-          isActive={turn !== myColor}
-          anchorTimestamp={game.lastMoveAt ?? game.createdAt}
-        />
+          <PlayerStrip
+            player={topPlayer}
+            isActive={isOpponentTurn && !isGameOver}
+            anchorTimestamp={game.lastMoveAt ?? game.createdAt}
+          />
 
         <div className={styles.boardWrapper}>
           <Board
@@ -244,7 +246,7 @@ export default function GameRoom({ gameId }: GameRoomProps) {
 
         <PlayerStrip
           player={bottomPlayer}
-          isActive={isMyTurn}
+          isActive={isMyTurn && !isGameOver}
           anchorTimestamp={game.lastMoveAt ?? game.createdAt}
         />
       </div>

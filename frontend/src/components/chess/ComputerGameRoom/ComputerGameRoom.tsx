@@ -245,7 +245,7 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
 
         <PlayerStrip
           player={topPlayer}
-          isActive={turn !== myColor}
+          isActive={turn !== myColor && !isGameOver}
           anchorTimestamp={game.lastMoveAt ?? game.createdAt}
         />
 
@@ -262,7 +262,7 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
 
         <PlayerStrip
           player={bottomPlayer}
-          isActive={isMyTurn}
+          isActive={isMyTurn && !isGameOver}
           anchorTimestamp={game.lastMoveAt ?? game.createdAt}
         />
       </div>

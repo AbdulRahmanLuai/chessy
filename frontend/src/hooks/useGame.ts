@@ -92,6 +92,7 @@ export function useGame(gameId: string): UseGameReturn {
           payload.fen,
           payload.whiteTimeRemainingMs,
           payload.blackTimeRemainingMs,
+          payload.movedAt
         );
       };
 

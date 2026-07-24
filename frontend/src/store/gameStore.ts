@@ -20,6 +20,7 @@ interface GameStore {
     nextFen: string,
     whiteTimeRemainingMs: number,
     blackTimeRemainingMs: number,
+    movedAt: string
   ) => void;
 
   /** Marks the game as finished with result + reason. */
@@ -49,7 +50,7 @@ export const useGameStore = create<GameStore>((set) => ({
 
   setLoading: (isLoading) => set({ isLoading }),
 
-  applyMove: (move, nextFen, whiteTimeRemainingMs, blackTimeRemainingMs) =>
+  applyMove: (move, nextFen, whiteTimeRemainingMs, blackTimeRemainingMs, movedAt) =>
     set((state) => {
       if (!state.game){
          return state;
@@ -62,7 +63,7 @@ export const useGameStore = create<GameStore>((set) => ({
           moves:                [...state.game.moves, move],
           whiteTimeRemainingMs,
           blackTimeRemainingMs,
-          lastMoveAt:           new Date().toISOString(),
+          lastMoveAt:  movedAt
         },
       };
     }),

@@ -47,6 +47,7 @@ export interface ComputerGameMoveAppliedEvent {
   fen: string;
   whiteTimeRemainingMs: number;
   blackTimeRemainingMs: number;
+  movedAt: string;
 }
 
 export interface ComputerGameEndedEvent {

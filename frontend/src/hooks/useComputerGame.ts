@@ -79,11 +79,13 @@ export function useComputerGame(gameId: string): UseComputerGameReturn {
 
       const onMoveApplied = (payload: ComputerGameMoveAppliedEvent) => {
         console.log('computer game move applied:', payload);
+        console.log("movedAt: ", payload.movedAt)
         applyMove(
           payload.move,
           payload.fen,
           payload.whiteTimeRemainingMs,
           payload.blackTimeRemainingMs,
+          payload.movedAt
         );
       };
 

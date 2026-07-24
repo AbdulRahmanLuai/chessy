@@ -1,19 +1,23 @@
 package com.chessy.chess_backend.controller.socketio.computerGame.event;
 
+import java.time.Instant;
+
 public class ComputerGameMoveAppliedEvent {
     private String gameId;
     private MoveDetail move;
     private String fen;
     private long whiteTimeRemainingMs;
     private long blackTimeRemainingMs;
+    private String movedAt;
 
     public ComputerGameMoveAppliedEvent(String gameId, MoveDetail move, String fen,
-                                         long whiteTimeRemainingMs, long blackTimeRemainingMs) {
+                                         long whiteTimeRemainingMs, long blackTimeRemainingMs, String movedAt) {
         this.gameId = gameId;
         this.move = move;
         this.fen = fen;
         this.whiteTimeRemainingMs = whiteTimeRemainingMs;
         this.blackTimeRemainingMs = blackTimeRemainingMs;
+        this.movedAt = movedAt;
     }
 
     public String getGameId() {
@@ -35,6 +39,8 @@ public class ComputerGameMoveAppliedEvent {
     public long getBlackTimeRemainingMs() {
         return blackTimeRemainingMs;
     }
+    // TODO: used lombok for auto getters/setters everywhere.
+    public String getMovedAt() {return movedAt;}
 
     public static class MoveDetail {
         private String from;

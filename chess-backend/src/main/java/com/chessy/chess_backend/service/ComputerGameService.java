@@ -1,5 +1,4 @@
-package com.chessy.chess_backend.service;
-
+package com.chessy.chess_backend.service; 
 import com.chessy.chess_backend.controller.socketio.computerGame.payload.ComputerGameMovePayload;
 import com.chessy.chess_backend.dto.gameGeneral.MoveDto;
 import com.chessy.chess_backend.dto.computerGame.ComputerGameDto;
@@ -257,13 +256,18 @@ public class ComputerGameService {
         game.setFinishedAt(finishedAt);
         game.setMoveVersion(readMoveVersion + 1);
 
+        Instant movedAt = game.getLastMoveAt();
+
         ComputerGameMoveAppliedEvent moveAppliedEvent = new ComputerGameMoveAppliedEvent(
                 gameId.toString(),
                 new ComputerGameMoveAppliedEvent.MoveDetail(payload.getFrom(), payload.getTo(), payload.getPromotion(), san),
                 game.getCurrentFen(),
                 whiteTimeRemainingMs,
-                blackTimeRemainingMs
+                blackTimeRemainingMs,
+                movedAt.toString()
         );
+
+
         ComputerGameEndResult endResult = null;
         if (isTerminal) {
             endResult = new ComputerGameEndResult(gameId, result, resultReason, winner, finishedAt, userId);

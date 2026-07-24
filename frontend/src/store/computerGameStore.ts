@@ -16,6 +16,7 @@ interface ComputerGameState {
     fen: string,
     whiteTimeRemainingMs: number,
     blackTimeRemainingMs: number,
+    movedAt: string
   ) => void;
   setResult: (
     status: 'COMPLETED',
@@ -34,7 +35,7 @@ export const useComputerGameStore = create<ComputerGameState>((set) => ({
 
   setLoading: (isLoading) => set({ isLoading }),
 
-  applyMove: (moveDetail, fen, whiteTimeRemainingMs, blackTimeRemainingMs) =>
+  applyMove: (moveDetail, fen, whiteTimeRemainingMs, blackTimeRemainingMs, movedAt) =>
     set((state) => {
       if (!state.game) return state;
 
@@ -58,6 +59,7 @@ export const useComputerGameStore = create<ComputerGameState>((set) => ({
           moves: [...state.game.moves, move],
           whiteTimeRemainingMs,
           blackTimeRemainingMs,
+          lastMoveAt: movedAt
         },
       };
     }),
