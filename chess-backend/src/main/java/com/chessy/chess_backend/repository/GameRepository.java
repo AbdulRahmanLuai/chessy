@@ -1,5 +1,6 @@
 package com.chessy.chess_backend.repository;
 
+import com.chessy.chess_backend.entity.ComputerGame;
 import com.chessy.chess_backend.entity.Game;
 import com.chessy.chess_backend.model.Move;
 import com.chessy.chess_backend.model.enums.gameGeneral.GameStatus;
@@ -15,6 +16,17 @@ import java.util.UUID;
 
 @Repository
 public interface GameRepository extends JpaRepository<Game, UUID> {
+
+    @Query("""
+    SELECT g FROM Game g
+    WHERE (g.whitePlayer.id = :userId OR g.blackPlayer.id = :userId)
+    AND g.status = :status
+    """)
+    List<Game> findActiveGame(
+            @Param("userId") UUID userId,
+            @Param("status") GameStatus status
+    );
+
 
     @Query("SELECT COUNT(g) > 0 FROM Game g " +
             "WHERE (g.whitePlayer.id = :userId OR g.blackPlayer.id = :userId) " +
