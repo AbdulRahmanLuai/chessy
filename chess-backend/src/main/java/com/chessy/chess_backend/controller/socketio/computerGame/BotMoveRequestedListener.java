@@ -49,25 +49,39 @@ public class BotMoveRequestedListener {
             return;
         }
 
-        System.out.println("Bot move requested for game with id" + gameId);
+        System.out.println("Bot move requested for game with id " + gameId);
 
+        // Make the bot feel more human.
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return;
+        }
 
         ComputerGameMoveResult result;
         try {
             ChessEngine engine = engineFactory.getEngine(EngineType.valueOf(game.getEngine()));
-            ComputerGameMovePayload botMove = engine.computeMove(game.getCurrentFen(), game.getMoves(), game.getDifficulty());
+            ComputerGameMovePayload botMove = engine.computeMove(
+                    game.getCurrentFen(),
+                    game.getMoves(),
+                    game.getDifficulty()
+            );
             botMove.setGameId(String.valueOf(gameId));
 
             result = gameService.applyMove(gameId, game.getUserId(), botMove, MoveSource.COMPUTER);
         } catch (ComputerGameTimedOutException e) {
             broadcaster.broadcastTimeout(gameId, e);
             return;
-        } catch (GameNotFoundException | IllegalMoveException | MoveNotationException | NotYourTurnException |
-                 NotAParticipantException | IllegalGameStateException | GameConcurrentModificationException e) {
-            broadcaster.broadcastFailure(gameId, new BotMoveFailedException(gameId, "The bot failed to make a move.", e));
+        } catch (GameNotFoundException | IllegalMoveException | MoveNotationException |
+                 NotYourTurnException | NotAParticipantException |
+                 IllegalGameStateException | GameConcurrentModificationException e) {
+            broadcaster.broadcastFailure(gameId,
+                    new BotMoveFailedException(gameId, "The bot failed to make a move.", e));
             return;
         } catch (Exception e) {
-            broadcaster.broadcastFailure(gameId, new BotMoveFailedException(gameId, e.getMessage(), e));
+            broadcaster.broadcastFailure(gameId,
+                    new BotMoveFailedException(gameId, e.getMessage(), e));
             return;
         }
 

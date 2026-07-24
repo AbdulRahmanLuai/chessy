@@ -8,14 +8,13 @@ import com.chessy.chess_backend.controller.socketio.challenge.payload.RespondCha
 import com.chessy.chess_backend.controller.socketio.challenge.payload.SendChallengePayload;
 import com.chessy.chess_backend.dto.onlineGame.CreateGameResponseDto;
 import com.chessy.chess_backend.entity.User;
-import com.chessy.chess_backend.event.auth.SocketAuthenticatedEvent;
 import com.chessy.chess_backend.repository.UserRepository;
 import com.chessy.chess_backend.service.GameService;
 import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.corundumstudio.socketio.annotation.OnEvent;
 import jakarta.annotation.PostConstruct;
-import org.springframework.context.event.EventListener;
+import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -43,9 +42,12 @@ public class ChallengeSocketController {
     }
 
 
-    @EventListener
-    public void onAuthenticated(SocketAuthenticatedEvent event) {
-        deliverPendingChallenges(event.getClient(), event.getUserId());
+    @OnEvent("challenge:requestPending")
+    public void onRequestPendingChallenges(SocketIOClient client) {
+        UUID userId = requireAuth(client);
+        if (userId == null) return;
+
+        deliverPendingChallenges(client, userId);
     }
 
     @OnEvent("challenge:send")
@@ -80,11 +82,15 @@ public class ChallengeSocketController {
                 (expiredChallenge, reason) -> notifyEnded(expiredChallenge, reason)
         );
 
+        User user = userRepository.findById(challengedId).orElseThrow();
         server.getRoomOperations("user:" + challengerId).sendEvent("challenge:sent", new ChallengeSentEvent(
                 challenge.getId().toString(),
                 challengedId.toString(),
                 challenge.getPreferredColor(),
-                challenge.getExpiresAt().toEpochMilli()
+                challenge.getExpiresAt().toEpochMilli(),
+                user.getUsername(),
+                user.getDisplayName()
+
         ));
 
         User challenger = userRepository.findById(challengerId)
