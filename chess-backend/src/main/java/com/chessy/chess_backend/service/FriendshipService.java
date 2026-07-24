@@ -90,6 +90,21 @@ public class FriendshipService {
         return friendship; // detached, but still holds the data we need
     }
 
+    public Friendship cancelRequest(UUID friendshipId, UUID requesterId) {
+        Friendship friendship = getOwned(friendshipId, requesterId);
+
+        if (friendship.getStatus() != FriendshipStatus.PENDING) {
+            throw new IllegalStateException("Request is not pending");
+        }
+
+        if (!friendship.getRequester().getId().equals(requesterId)) {
+            throw new IllegalStateException("Only the requester can cancel this request");
+        }
+
+        friendshipRepository.delete(friendship);
+        return friendship; // detached, but still holds the data we need
+    }
+
     public Friendship removeFriend(UUID friendshipId, UUID requesterId) {
         Friendship friendship = getOwned(friendshipId, requesterId);
 

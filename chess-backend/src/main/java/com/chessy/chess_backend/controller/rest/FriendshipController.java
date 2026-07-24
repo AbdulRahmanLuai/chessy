@@ -76,6 +76,19 @@ public class FriendshipController {
         );
     }
 
+    @PostMapping("/requests/{friendshipId}/cancel")
+    public void cancelRequest(Authentication auth, @PathVariable UUID friendshipId) {
+        UUID requesterId = resolveUserId(auth);
+
+        Friendship friendship = friendshipService.cancelRequest(friendshipId, requesterId);
+
+        UUID recipientId = friendship.getUser1().getId().equals(requesterId)
+                ? friendship.getUser2().getId()
+                : friendship.getUser1().getId();
+
+        friendSocketNotifier.notifyRequestCancelled(recipientId, friendshipId.toString());
+    }
+
     @DeleteMapping("/{friendshipId}")
     public void removeFriend(Authentication auth, @PathVariable UUID friendshipId) {
         UUID userId = resolveUserId(auth);

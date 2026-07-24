@@ -30,6 +30,11 @@ public class FriendSocketNotifier {
                 .sendEvent("friend:requestDeclined", new FriendRequestDeclinedEvent(friendshipId));
     }
 
+    public void notifyRequestCancelled(UUID recipientId, String friendshipId) {
+        server.getRoomOperations("user:" + recipientId)
+                .sendEvent("friend:requestCancelled", new FriendRequestCancelledEvent(friendshipId));
+    }
+
     public void notifyFriendRemoved(UUID otherUserId, String friendshipId) {
         server.getRoomOperations("user:" + otherUserId)
                 .sendEvent("friend:removed", new FriendRemovedEvent(friendshipId));
