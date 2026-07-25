@@ -52,6 +52,8 @@ public class ComputerGameService {
     private final EntityManager entityManager;
     private final ApplicationEventPublisher eventPublisher;
     private final Random random = new Random();
+    private final org.springframework.scheduling.TaskScheduler taskScheduler; // new
+
 
     /**
      * colorPreference: "WHITE", "BLACK", or "RANDOM". RANDOM is resolved
@@ -116,6 +118,7 @@ public class ComputerGameService {
 
         System.out.println(String.valueOf(timeLimitMs));
         ComputerGame saved = computerGameRepository.save(game);
+        UUID savedId = saved.getId();
 
 
         if (isTimed) {
@@ -124,7 +127,21 @@ public class ComputerGameService {
 
         if (userColor == UserColor.BLACK) {
             System.out.println("bot move requested on game start");
-            eventPublisher.publishEvent(new BotMoveRequestedEvent(saved.getId()));
+            if (isTimed){
+                taskScheduler.schedule(() -> {
+                    try {
+                        eventPublisher.publishEvent(new BotMoveRequestedEvent(savedId));
+                    } catch (Exception e) {
+                        System.out.printf("Failed to publish delayed BotMoveRequestedEvent for game {}", savedId, e);
+                        System.out.println();
+                    }
+                }, clockStartsAt);
+            }
+            else {
+
+                eventPublisher.publishEvent(new BotMoveRequestedEvent(savedId));
+            }
+
         }
 
         return toDto(saved);
@@ -225,9 +242,12 @@ public class ComputerGameService {
         if (game.isTimed()) {
             long elapsedMs = game.getLastMoveAt() != null
                     ? Duration.between(game.getLastMoveAt(), now).toMillis() : 0L;
+
+            System.out.println(game.getLastMoveAt() + "|" + now);
             long incrementMs = game.getTimeIncrementSeconds() * 1000L;
             if (sideToMove == Side.WHITE) {
                 whiteTimeRemainingMs = Math.max(0L, whiteTimeRemainingMs - elapsedMs + incrementMs);
+                System.out.println("elapsed: " + elapsedMs + "whiteTimeRemainingMs: " + whiteTimeRemainingMs);
                 newDeadline = now.plusMillis(blackTimeRemainingMs);
             } else {
                 blackTimeRemainingMs = Math.max(0L, blackTimeRemainingMs - elapsedMs + incrementMs);

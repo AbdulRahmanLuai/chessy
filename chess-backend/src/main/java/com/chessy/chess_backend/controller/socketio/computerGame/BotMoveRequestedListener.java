@@ -17,8 +17,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import java.util.concurrent.ThreadLocalRandom;
+
 
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 
 @Component
@@ -37,7 +40,7 @@ public class BotMoveRequestedListener {
     }
 
     @Async
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onBotMoveRequested(BotMoveRequestedEvent event) {
         UUID gameId = event.getGameId();
 
@@ -53,7 +56,8 @@ public class BotMoveRequestedListener {
 
         // Make the bot feel more human.
         try {
-            Thread.sleep(500);
+
+            Thread.sleep(ThreadLocalRandom.current().nextInt(900, 1801));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return;
