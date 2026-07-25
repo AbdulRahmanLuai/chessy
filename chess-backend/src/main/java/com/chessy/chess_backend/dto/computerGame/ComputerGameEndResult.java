@@ -17,4 +17,6 @@ public class ComputerGameEndResult {
     private ComputerGameWinner winner;
     private Instant finishedAt;
     private UUID userId;
+    private Long whiteTimeRemainingMs;
+    private Long blackTimeRemainingMs;
 }

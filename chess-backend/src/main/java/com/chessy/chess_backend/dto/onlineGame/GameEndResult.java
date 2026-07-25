@@ -14,4 +14,7 @@ public class GameEndResult {
     private GameResultReason resultReason;
     private UUID winner;
     private Instant finishedAt;
+    private Long WhiteTimeRemaining;
+    private Long BlackTimeRemaining;
+
 }

@@ -254,7 +254,7 @@ public class GameService {
             game.setResultReason(resultReason.toString());
             game.setWinner(winnerId);
             game.setFinishedAt(finishedAt);
-            endResult = publishGameEndResult(gameId, result, resultReason, winnerId, finishedAt);
+            endResult = publishGameEndResult(gameId, result, resultReason, winnerId, finishedAt, game.getWhiteTimeRemainingMs(), game.getBlackTimeRemainingMs());
         } else {
             eventPublisher.publishEvent(new GameDeadlineScheduledEvent(game.getId(), game.getCurrentPlayerDeadlineAt()));
         }
@@ -315,9 +315,9 @@ public class GameService {
      * after the corresponding atomic update has already succeeded.
      */
     private GameEndResult publishGameEndResult(UUID gameId, String result, GameResultReason resultReason,
-                                               UUID winnerId, Instant finishedAt) {
+                                               UUID winnerId, Instant finishedAt, Long whiteTimeRemainingMs, Long blackTimeRemainingMs) {
         eventPublisher.publishEvent(new GameFinishedEvent(gameId));
-        return new GameEndResult(gameId, result, resultReason, winnerId, finishedAt);
+        return new GameEndResult(gameId, result, resultReason, winnerId, finishedAt, whiteTimeRemainingMs, blackTimeRemainingMs);
     }
 
     private List<com.chessy.chess_backend.model.Move> computeUpdatedMoves(Game game, Square from, Square to,
@@ -351,7 +351,7 @@ public class GameService {
             throw new GameConcurrentModificationException(gameId);
         }
 
-        return publishGameEndResult(gameId, result, GameResultReason.RESIGNATION, winnerId, now);
+        return publishGameEndResult(gameId, result, GameResultReason.RESIGNATION, winnerId, now, game.getWhiteTimeRemainingMs(), game.getBlackTimeRemainingMs());
     }
 
     @Transactional
@@ -368,7 +368,7 @@ public class GameService {
         if (rows == 0) {
             throw new GameConcurrentModificationException(gameId);
         }
-        return publishGameEndResult(gameId, "aborted", GameResultReason.ABORTED, null, now);
+        return publishGameEndResult(gameId, "aborted", GameResultReason.ABORTED, null, now, game.getWhiteTimeRemainingMs(), game.getBlackTimeRemainingMs());
     }
 
     public void validateActiveParticipant(UUID gameId, UUID userId) {
@@ -413,7 +413,7 @@ public class GameService {
             throw new GameConcurrentModificationException(gameId);
         }
 
-        return publishGameEndResult(gameId, "1/2-1/2", GameResultReason.DRAW_AGREEMENT, null, now);
+        return publishGameEndResult(gameId, "1/2-1/2", GameResultReason.DRAW_AGREEMENT, null, now, game.getWhiteTimeRemainingMs(), game.getBlackTimeRemainingMs());
     }
 
     /**
@@ -479,7 +479,7 @@ public class GameService {
             return Optional.empty();
         }
 
-        return Optional.of(publishGameEndResult(game.getId(), result, GameResultReason.TIMEOUT, winnerId, now));
+        return Optional.of(publishGameEndResult(game.getId(), result, GameResultReason.TIMEOUT, winnerId, now, game.getWhiteTimeRemainingMs(), game.getBlackTimeRemainingMs()));
     }
 
 }

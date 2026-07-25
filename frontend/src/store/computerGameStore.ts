@@ -22,6 +22,10 @@ interface ComputerGameState {
     status: 'COMPLETED',
     result: string,
     resultReason: string,
+    finishedAt: string,
+    whiteTimeRemainingMs: number,
+    blackTimeRemainingMs: number,
+
   ) => void;
 }
 
@@ -64,7 +68,7 @@ export const useComputerGameStore = create<ComputerGameState>((set) => ({
       };
     }),
 
-  setResult: (status, result, resultReason) =>
+  setResult: (status, result, resultReason, finishedAt, whiteTimeRemainingMs, blackTimeRemainingMs) =>
     set((state) => {
       if (!state.game) return state;
       return {
@@ -73,7 +77,9 @@ export const useComputerGameStore = create<ComputerGameState>((set) => ({
           status,
           result,
           resultReason,
-          finishedAt: new Date().toISOString(),
+          finishedAt: finishedAt,
+          whiteTimeRemainingMs: whiteTimeRemainingMs,
+          blackTimeRemainingMs: blackTimeRemainingMs
         },
       };
     }),

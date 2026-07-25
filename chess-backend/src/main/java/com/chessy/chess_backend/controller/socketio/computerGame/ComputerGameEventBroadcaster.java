@@ -36,7 +36,10 @@ public class ComputerGameEventBroadcaster {
                 endResult.getGameId().toString(),
                 endResult.getResult(),
                 endResult.getWinner() == null ? "DRAW" : endResult.getWinner().toString(),
-                endResult.getResultReason().toString()
+                endResult.getResultReason().toString(),
+                endResult.getFinishedAt().toString(),
+                endResult.getWhiteTimeRemainingMs(),
+                endResult.getBlackTimeRemainingMs()
         );
     }
 

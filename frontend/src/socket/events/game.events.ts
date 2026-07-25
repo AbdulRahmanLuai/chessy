@@ -1,4 +1,4 @@
-import type { PieceSymbol, Square } from '@/types';
+import type { GameResult, PieceSymbol, ResultReason, Square } from '@/types';
 
 //
 // ─────────────────────────────────────────────────────────────
@@ -60,8 +60,12 @@ export interface DrawOfferedEvent {
 
 export interface GameEndedEvent {
   gameId: string;
-  result: string;
-  reason: string;
+  result: string;        // backend sends raw string here, not GameResult
+  reason: ResultReason;
+  winner: string | null;
+  finishedAt: string;
+  whiteTimeRemainingMs: number,
+  blackTimeRemainingMs: number
 }
 
 export interface GameServerToClientEvents {

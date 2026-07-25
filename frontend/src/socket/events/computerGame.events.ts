@@ -55,6 +55,9 @@ export interface ComputerGameEndedEvent {
   result: string;   // e.g. "1-0", "0-1", "1/2-1/2"
   winner: string;   // userId or "DRAW"
   resultReason: string;
+  finishedAt: string;
+  whiteTimeRemainingMs: number;
+  blackTimeRemainingMs: number;
 }
 
 export interface ComputerGameServerToClientEvents {

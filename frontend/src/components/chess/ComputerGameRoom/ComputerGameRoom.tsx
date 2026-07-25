@@ -247,6 +247,7 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
   const topPlayer    = boardOrientation === 'white' ? blackGamePlayer : whiteGamePlayer;
 
   
+  const anchorTimeStamp = isGameOver? game.finishedAt : (game.lastMoveAt ?? game.createdAt);
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -259,7 +260,7 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
         <PlayerStrip
           player={topPlayer}
           isActive={turn !== myColor && !isGameOver}
-          anchorTimestamp={game.lastMoveAt ?? game.createdAt}
+          anchorTimestamp={anchorTimeStamp}
         />
 
         <div className={styles.boardWrapper}>
@@ -276,7 +277,7 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
         <PlayerStrip
           player={bottomPlayer}
           isActive={isMyTurn && !isGameOver}
-          anchorTimestamp={game.lastMoveAt ?? game.createdAt}
+          anchorTimestamp={anchorTimeStamp}
         />
       </div>
 

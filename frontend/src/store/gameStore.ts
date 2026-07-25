@@ -28,6 +28,9 @@ interface GameStore {
     status: Extract<GameStatus, 'COMPLETED' | 'ABORTED'>,
     result: GameResult,
     resultReason: ResultReason,
+    finishedAt: string,
+    whiteTimeRemainingMs: number, 
+    blackTimeRemainingMs: number
   ) => void;
 
   /** Full reset on leaving the game page. */
@@ -68,7 +71,7 @@ export const useGameStore = create<GameStore>((set) => ({
       };
     }),
 
-  setResult: (status, result, resultReason) =>
+  setResult: (status, result, resultReason, finishedAt, whiteTimeRemainingMs, blackTimeRemainingMs) =>
     set((state) => {
       if (!state.game) return state;
       return {
@@ -77,7 +80,9 @@ export const useGameStore = create<GameStore>((set) => ({
           status,
           result,
           resultReason,
-          finishedAt: new Date().toISOString(),
+          finishedAt,
+          whiteTimeRemainingMs: whiteTimeRemainingMs,
+          blackTimeRemainingMs: blackTimeRemainingMs
         },
       };
     }),

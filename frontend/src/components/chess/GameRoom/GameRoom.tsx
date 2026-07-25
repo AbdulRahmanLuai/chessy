@@ -239,6 +239,8 @@ export default function GameRoom({ gameId }: GameRoomProps) {
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
+  const anchorTimeStamp = isGameOver? game.finishedAt : (game.lastMoveAt ?? game.createdAt);
+
   return (
     <div className={styles.root}>
 
@@ -248,7 +250,7 @@ export default function GameRoom({ gameId }: GameRoomProps) {
         <PlayerStrip
           player={topPlayer}
           isActive={isOpponentTurn && !isGameOver}
-          anchorTimestamp={game.lastMoveAt ?? game.createdAt}
+          anchorTimestamp={anchorTimeStamp}
         />
 
         <div className={styles.boardWrapper}>
@@ -265,7 +267,7 @@ export default function GameRoom({ gameId }: GameRoomProps) {
         <PlayerStrip
           player={bottomPlayer}
           isActive={isMyTurn && !isGameOver}
-          anchorTimestamp={game.lastMoveAt ?? game.createdAt}
+          anchorTimestamp={anchorTimeStamp}
         />
       </div>
 

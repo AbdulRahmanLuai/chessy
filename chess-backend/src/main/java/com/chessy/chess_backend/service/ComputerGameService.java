@@ -270,7 +270,7 @@ public class ComputerGameService {
 
         ComputerGameEndResult endResult = null;
         if (isTerminal) {
-            endResult = new ComputerGameEndResult(gameId, result, resultReason, winner, finishedAt, userId);
+            endResult = new ComputerGameEndResult(gameId, result, resultReason, winner, finishedAt, userId, game.getWhiteTimeRemainingMs(), game.getBlackTimeRemainingMs());
             eventPublisher.publishEvent(new ComputerGameFinishedEvent(gameId));
         } else {
             if (source == MoveSource.USER) {
@@ -300,7 +300,7 @@ public class ComputerGameService {
         eventPublisher.publishEvent(new ComputerGameFinishedEvent(gameId));
 
         // The resigning party is always the user, so the computer wins.
-        return new ComputerGameEndResult(gameId, result, resultReason, ComputerGameWinner.COMPUTER, now, userId);
+        return new ComputerGameEndResult(gameId, result, resultReason, ComputerGameWinner.COMPUTER, now, userId, game.getWhiteTimeRemainingMs(), game.getBlackTimeRemainingMs());
     }
 
     @Transactional
@@ -321,7 +321,7 @@ public class ComputerGameService {
 
         eventPublisher.publishEvent(new ComputerGameFinishedEvent(gameId));
 
-        return new ComputerGameEndResult(gameId, result, resultReason, ComputerGameWinner.DRAW, now, userId);
+        return new ComputerGameEndResult(gameId, result, resultReason, ComputerGameWinner.DRAW, now, userId, game.getWhiteTimeRemainingMs(), game.getBlackTimeRemainingMs());
     }
 
     private ComputerGame loadActiveGame(UUID gameId, UUID userId) {
@@ -438,7 +438,7 @@ public class ComputerGameService {
 
         eventPublisher.publishEvent(new ComputerGameFinishedEvent(game.getId()));
         return Optional.of(new ComputerGameEndResult(
-                game.getId(), result, GameResultReason.TIMEOUT, winner, now, game.getUser().getId()));
+                game.getId(), result, GameResultReason.TIMEOUT, winner, now, game.getUser().getId(), game.getWhiteTimeRemainingMs(), game.getBlackTimeRemainingMs()));
     }
 
     /**

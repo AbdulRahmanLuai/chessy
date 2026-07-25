@@ -91,7 +91,7 @@ export function useComputerGame(gameId: string): UseComputerGameReturn {
 
       const onGameEnded = (payload: ComputerGameEndedEvent) => {
         console.log('computer game ended:', payload);
-        setResult('COMPLETED', payload.result, payload.resultReason);
+        setResult('COMPLETED', payload.result, payload.resultReason, payload.finishedAt, payload.whiteTimeRemainingMs, payload.blackTimeRemainingMs);
       };
 
       // Non-terminal: bot failed to produce a move. Surface the error and
