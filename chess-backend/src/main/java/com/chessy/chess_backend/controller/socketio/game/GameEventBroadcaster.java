@@ -41,9 +41,8 @@ public class GameEventBroadcaster {
                 endResult.getWinner() == null ? "DRAW" : endResult.getWinner().toString(),
                 endResult.getResultReason().toString(),
                 endResult.getFinishedAt().toString(),
-                endResult.getWhiteTimeRemainingMs,
-                endResult.getBlackTimeRemainingMs
-
+                endResult.getWhiteTimeRemaining(),
+                endResult.getBlackTimeRemaining()
         );
     }
 
@@ -90,7 +89,9 @@ public class GameEventBroadcaster {
                 endResult.getResult(),
                 endResult.getWinner() == null ? "DRAW" : endResult.getWinner().toString(),
                 endResult.getResultReason().toString(),
-                endResult.getFinishedAt().toString()
+                endResult.getFinishedAt().toString(),
+                endResult.getWhiteTimeRemaining(),
+                endResult.getBlackTimeRemaining()
         );
 
         sendToPlayers(players, "game:drawAccepted", acceptedEvent);

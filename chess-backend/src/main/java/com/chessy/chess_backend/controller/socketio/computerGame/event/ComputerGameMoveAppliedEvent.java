@@ -6,12 +6,12 @@ public class ComputerGameMoveAppliedEvent {
     private String gameId;
     private MoveDetail move;
     private String fen;
-    private long whiteTimeRemainingMs;
-    private long blackTimeRemainingMs;
+    private Long whiteTimeRemainingMs;
+    private Long blackTimeRemainingMs;
     private String movedAt;
 
     public ComputerGameMoveAppliedEvent(String gameId, MoveDetail move, String fen,
-                                         long whiteTimeRemainingMs, long blackTimeRemainingMs, String movedAt) {
+                                         Long whiteTimeRemainingMs, Long blackTimeRemainingMs, String movedAt) {
         this.gameId = gameId;
         this.move = move;
         this.fen = fen;
@@ -32,11 +32,11 @@ public class ComputerGameMoveAppliedEvent {
         return fen;
     }
 
-    public long getWhiteTimeRemainingMs() {
+    public Long getWhiteTimeRemainingMs() {
         return whiteTimeRemainingMs;
     }
 
-    public long getBlackTimeRemainingMs() {
+    public Long getBlackTimeRemainingMs() {
         return blackTimeRemainingMs;
     }
     // TODO: used lombok for auto getters/setters everywhere.

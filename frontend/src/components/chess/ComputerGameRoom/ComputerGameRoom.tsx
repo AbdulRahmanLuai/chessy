@@ -184,6 +184,8 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
 
   const isMyTurn = game?.status === 'IN_PROGRESS' && turn === myColor;
 
+  const isTimed = game?.timeInitialSeconds !== null;
+
   // ── Derived: viewed-ply position (drives board + highlights) ─────────────
   const lastMove = useMemo(() => {
     if (!game || viewedPly < 0) return null;
@@ -247,7 +249,7 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
   const topPlayer    = boardOrientation === 'white' ? blackGamePlayer : whiteGamePlayer;
 
   
-  const anchorTimeStamp = isGameOver? game.finishedAt : (game.lastMoveAt ?? game.createdAt);
+  
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -260,7 +262,8 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
         <PlayerStrip
           player={topPlayer}
           isActive={turn !== myColor && !isGameOver}
-          anchorTimestamp={anchorTimeStamp}
+          anchorTimestamp={game.lastMoveAt ?? game.createdAt}
+          isTimed={isTimed}
         />
 
         <div className={styles.boardWrapper}>
@@ -277,7 +280,8 @@ export default function ComputerGameRoom({ gameId }: ComputerGameRoomProps) {
         <PlayerStrip
           player={bottomPlayer}
           isActive={isMyTurn && !isGameOver}
-          anchorTimestamp={anchorTimeStamp}
+          anchorTimestamp={game.lastMoveAt ?? game.createdAt}
+          isTimed={isTimed}
         />
       </div>
 

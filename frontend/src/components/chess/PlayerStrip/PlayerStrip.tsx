@@ -14,6 +14,7 @@ export interface PlayerStripProps {
   anchorTimestamp: string | null | undefined;
   capturedPieces?: React.ReactNode;
   className?: string;
+  isTimed: boolean;
 }
 
 export default function PlayerStrip({
@@ -22,6 +23,7 @@ export default function PlayerStrip({
   anchorTimestamp,
   capturedPieces,
   className,
+  isTimed
 }: PlayerStripProps) {
   const { user, isConnected, timeRemainingMs: baseRemainingMs } = player;
 
@@ -75,11 +77,13 @@ export default function PlayerStrip({
         </div>
 
         {/* Right — clock */}
+       {isTimed && timeRemainingMs != null && (
         <Clock
           timeRemainingMs={timeRemainingMs}
           isActive={isActive}
           label={`${user.username}'s clock`}
         />
+      )}
       </div>
 
       {/* ── Captured pieces row (optional) ───────────────────────────────── */}
