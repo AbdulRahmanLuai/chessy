@@ -1,12 +1,15 @@
 package com.chessy.chess_backend.controller.rest;
-
+import com.chessy.chess_backend.dto.user.UserProfileDto;
 import com.chessy.chess_backend.dto.user.UserSearchResultDto;
 import com.chessy.chess_backend.entity.User;
 import com.chessy.chess_backend.repository.UserRepository;
 import com.chessy.chess_backend.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import java.util.List;
 import java.util.UUID;
@@ -28,15 +31,32 @@ public class UserController {
 
         return userRepository.findTop10ByUsernameStartingWithIgnoreCaseAndIdNot(prefix.trim(), callerId)
                 .stream()
-                .map(this::toDto)
+                .map(this::toSearchDto)
                 .toList();
     }
 
-    private UserSearchResultDto toDto(User user) {
+    @GetMapping("/{userName}")
+    public UserProfileDto getProfile(@PathVariable String userName) {
+        User user = userRepository.findByUsernameIgnoreCase(userName)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        return toProfileDto(user);
+    }
+
+    private UserSearchResultDto toSearchDto(User user) {
         return UserSearchResultDto.builder()
                 .id(user.getId())
                 .username(user.getUsername())
                 .displayName(user.getDisplayName())
+                .build();
+    }
+
+    private UserProfileDto toProfileDto(User user) {
+        return UserProfileDto.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .displayName(user.getDisplayName())
+                .createdAt(user.getCreatedAt())
                 .build();
     }
 

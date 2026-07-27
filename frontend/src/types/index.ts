@@ -30,6 +30,13 @@ export interface User {
   createdAt: string;
 }
 
+export interface PublicProfile {
+  id: string;
+  username: string;
+  displayName: string;
+  createdAt: string;
+}
+
 // Result shape for username-prefix search (e.g. "challenge by username" lookup).
 // Deliberately separate from `User` — search results may be a trimmed-down
 // projection server-side and we don't want to imply email/createdAt are present.
@@ -143,6 +150,7 @@ export interface Game {
   whiteTimeRemainingMs: number;
   blackTimeRemainingMs: number;
   lastMoveAt: string | null;
+  winner: string | null;
   currentPlayerDeadlineAt: string | null;
   result: GameResult | null;
   resultReason: ResultReason | null;

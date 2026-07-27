@@ -18,6 +18,8 @@ import com.chessy.chess_backend.repository.UserRepository;
 import com.github.bhlangonijr.chesslib.move.MoveGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
 
 @Service
 @RequiredArgsConstructor
@@ -51,6 +54,23 @@ public class GameService {
                 .findFirst()
                 .map(gameMapper::toDto);
     }
+
+    @Transactional(readOnly = true)
+    public Page<GameDto> getUserGames(String userName, Pageable pageable) {
+        System.out.println("X");
+        try {
+            return gameRepository.findGamesByUserName(userName, pageable)
+                    .map(gameMapper::toDto);
+
+
+        } catch (Exception e) {
+            System.out.printf("Failed to fetch games for user {}", userName, e);
+            System.out.println();
+            throw e; // or throw a custom exception, or return Page.empty(pageable)
+        }
+    }
+
+
 
     public CreateGameResponseDto createGame(UUID whitePlayerId, UUID blackPlayerId, int timeLimitSeconds, int incrementSeconds) {
 

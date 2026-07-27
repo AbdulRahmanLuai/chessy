@@ -35,6 +35,7 @@ public class GameMapper {
                 .currentPlayerDeadlineAt(game.getCurrentPlayerDeadlineAt())
                 .createdAt(game.getCreatedAt())
                 .finishedAt(game.getFinishedAt())
+                .winner(game.getWinner())
                 .build();
     }
 

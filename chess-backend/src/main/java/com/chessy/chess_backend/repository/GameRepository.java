@@ -4,6 +4,8 @@ import com.chessy.chess_backend.entity.ComputerGame;
 import com.chessy.chess_backend.entity.Game;
 import com.chessy.chess_backend.model.Move;
 import com.chessy.chess_backend.model.enums.gameGeneral.GameStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -25,6 +27,16 @@ public interface GameRepository extends JpaRepository<Game, UUID> {
     List<Game> findActiveGame(
             @Param("userId") UUID userId,
             @Param("status") GameStatus status
+    );
+
+    @Query("""
+    SELECT g FROM Game g
+    WHERE (g.whitePlayer.username = :userName OR g.blackPlayer.username = :userName)
+    AND g.status = 'COMPLETED'
+    """)
+    Page<Game> findGamesByUserName(
+            @Param("userName") String userName,
+            Pageable pageable
     );
 
 

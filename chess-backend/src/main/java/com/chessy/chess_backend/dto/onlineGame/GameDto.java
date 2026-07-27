@@ -30,6 +30,8 @@ public class GameDto {
     private String result;
     private String resultReason;
 
+    private UUID winner;
+
     private Integer timeInitialSeconds;
     private Integer timeIncrementSeconds;
 

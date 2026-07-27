@@ -11,6 +11,7 @@ import GamePage from './pages/GamePage/GamePage';
 import PlayOnlinePage from './pages/PlayOnlinePage/PlayOnlinePage';
 import ComputerGamePage from './pages/ComputerGamePage';
 import PlayComputerPage from './pages/PlayComputerPage/PlayComputerPage';
+import ProfilePage from './pages/ProfilePage';
 
 export const router = createBrowserRouter([
   {
@@ -80,10 +81,10 @@ export const router = createBrowserRouter([
   },
 
   {
-  path: '/game/:gameId',
-  element: <ProtectedRoute />,
-  children: [{ index: true, element: <GamePage /> }],
-},
+    path: '/game/:gameId',
+    element: <ProtectedRoute />,
+    children: [{ index: true, element: <GamePage /> }],
+  },
 
   {
     path: '/play/computer',
@@ -96,9 +97,22 @@ export const router = createBrowserRouter([
     children: [{ index: true, element: <ComputerGamePage /> }],
   },
 
+  // ── Profile ─────────────────────────────────────────────────────────────
+  // No :userId → own profile. With :userId → viewing another user's profile.
+  {
+    path: '/profile',
+    element: <ProtectedRoute />,
+    children: [{ index: true, element: <ProfilePage /> }],
+  },
+  {
+    path: '/profile/:userId',
+    element: <ProtectedRoute />,
+    children: [{ index: true, element: <ProfilePage /> }],
+  },
 
   // ── 404 ───────────────────────────────────────────────────────────────────
- {   path: '*',
+  {
+    path: '*',
     element: (
       <div
         style={{
