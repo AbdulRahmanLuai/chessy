@@ -3,6 +3,7 @@ package com.chessy.chess_backend.service;
 import com.chessy.chess_backend.controller.socketio.game.event.MoveAppliedEvent;
 import com.chessy.chess_backend.controller.socketio.game.payload.MovePayload;
 import com.chessy.chess_backend.dto.computerGame.ComputerGameDto;
+import com.chessy.chess_backend.model.enums.gameGeneral.GameResult;
 import com.chessy.chess_backend.model.enums.gameGeneral.GameResultReason;
 import com.chessy.chess_backend.dto.gameGeneral.MoveListDto;
 import com.chessy.chess_backend.dto.onlineGame.*;
@@ -206,27 +207,30 @@ public class GameService {
         List<com.chessy.chess_backend.model.Move> updatedMoves =
                 computeUpdatedMoves(game, from, to, payload.getPromotion(), san, sideToMove, now);
 
-        String result = null;
+        GameResult gameResult = null;
         GameResultReason resultReason = null;
         UUID winnerId = null;
 
         if (board.isMated()) {
-            winnerId = sideToMove.flip() == Side.WHITE ? game.getWhitePlayer().getId() : game.getBlackPlayer().getId(); // TODO: N+1?
-            result = "checkmate";
+            boolean whiteWon = sideToMove == Side.WHITE;
+            winnerId = whiteWon ? game.getWhitePlayer().getId() : game.getBlackPlayer().getId(); // TODO: N+1?
+            gameResult = whiteWon ? GameResult.WHITE_WINS : GameResult.BLACK_WINS;
             resultReason = GameResultReason.CHECKMATE;
         } else if (board.isStaleMate()) {
-            result = "draw";
+            gameResult = GameResult.DRAW;
             resultReason = GameResultReason.STALEMATE;
         } else if (board.isRepetition()) {
-            result = "draw";
+            gameResult = GameResult.DRAW;
             resultReason = GameResultReason.THREEFOLD_REPETITION;
         } else if (board.isInsufficientMaterial()) {
-            result = "draw";
+            gameResult = GameResult.DRAW;
             resultReason = GameResultReason.INSUFFICIENT_MATERIAL;
         } else if (board.getHalfMoveCounter() >= 100) {
-            result = "draw";
+            gameResult = GameResult.DRAW;
             resultReason = GameResultReason.FIFTY_MOVE_RULE;
         }
+
+        String result = gameResult != null ? gameResult.toString() : null;
 
         boolean isTerminal = resultReason != null;
         GameStatus newStatus = isTerminal ? GameStatus.COMPLETED : GameStatus.IN_PROGRESS;
@@ -363,7 +367,8 @@ public class GameService {
         boolean isWhite = ctx.isWhite();
 
         UUID winnerId = isWhite ? game.getBlackPlayer().getId() : game.getWhitePlayer().getId();
-        String result = isWhite ? "0-1" : "1-0";
+        GameResult gameResult = isWhite ? GameResult.BLACK_WINS : GameResult.WHITE_WINS;
+        String result = gameResult.toString();
         Instant now = Instant.now();
 
         int rows = gameRepository.resignIfInProgress(gameId, result, GameResultReason.RESIGNATION.toString(), winnerId, now);
@@ -384,11 +389,13 @@ public class GameService {
         }
 
         Instant now = Instant.now();
-        int rows = gameRepository.abortIfBelowThreshold(gameId, "aborted", GameResultReason.ABORTED.toString(), now, 2);
+        // Aborted games have no chess outcome, so result is left null here;
+        // status = ABORTED and resultReason = ABORTED fully describe this state.
+        int rows = gameRepository.abortIfBelowThreshold(gameId, null, GameResultReason.ABORTED.toString(), now, 2);
         if (rows == 0) {
             throw new GameConcurrentModificationException(gameId);
         }
-        return publishGameEndResult(gameId, "aborted", GameResultReason.ABORTED, null, now, game.getWhiteTimeRemainingMs(), game.getBlackTimeRemainingMs());
+        return publishGameEndResult(gameId, null, GameResultReason.ABORTED, null, now, game.getWhiteTimeRemainingMs(), game.getBlackTimeRemainingMs());
     }
 
     public void validateActiveParticipant(UUID gameId, UUID userId) {
@@ -433,7 +440,7 @@ public class GameService {
             throw new GameConcurrentModificationException(gameId);
         }
 
-        return publishGameEndResult(gameId, "1/2-1/2", GameResultReason.DRAW_AGREEMENT, null, now, game.getWhiteTimeRemainingMs(), game.getBlackTimeRemainingMs());
+        return publishGameEndResult(gameId, GameResult.DRAW.toString(), GameResultReason.DRAW_AGREEMENT, null, now, game.getWhiteTimeRemainingMs(), game.getBlackTimeRemainingMs());
     }
 
     /**
@@ -488,8 +495,13 @@ public class GameService {
     private Optional<GameEndResult> timeoutGame(Game game) {
         boolean whiteToMove = game.getMoves().size() % 2 == 0;
         UUID winnerId = whiteToMove ? game.getBlackPlayer().getId() : game.getWhitePlayer().getId();
-        String result = whiteToMove ? "0-1" : "1-0";
+        GameResult gameResult = whiteToMove ? GameResult.BLACK_WINS : GameResult.WHITE_WINS;
+        String result = gameResult.toString();
         Instant now = Instant.now();
+
+
+        long finalWhiteTimeRemainingMs = whiteToMove ? 0L : game.getWhiteTimeRemainingMs();
+        long finalBlackTimeRemainingMs = whiteToMove ? game.getBlackTimeRemainingMs() : 0L;
 
         int rows = gameRepository.timeoutIfCurrent(
                 game.getId(), result, GameResultReason.TIMEOUT.toString(), winnerId, now,
@@ -499,7 +511,12 @@ public class GameService {
             return Optional.empty();
         }
 
-        return Optional.of(publishGameEndResult(game.getId(), result, GameResultReason.TIMEOUT, winnerId, now, game.getWhiteTimeRemainingMs(), game.getBlackTimeRemainingMs()));
+
+        game.setWhiteTimeRemainingMs(finalWhiteTimeRemainingMs);
+        game.setBlackTimeRemainingMs(finalBlackTimeRemainingMs);
+
+        return Optional.of(publishGameEndResult(game.getId(), result, GameResultReason.TIMEOUT, winnerId, now,
+                finalWhiteTimeRemainingMs, finalBlackTimeRemainingMs));
     }
 
 }
