@@ -116,7 +116,6 @@ public class ComputerGameService {
         game.setLastMoveAt(clockStartsAt);
         game.setCurrentPlayerDeadlineAt(isTimed ? clockStartsAt.plus(timeInitialSeconds, ChronoUnit.SECONDS) : null);
 
-        System.out.println(String.valueOf(timeLimitMs));
         ComputerGame saved = computerGameRepository.save(game);
         UUID savedId = saved.getId();
 
@@ -133,7 +132,6 @@ public class ComputerGameService {
                         eventPublisher.publishEvent(new BotMoveRequestedEvent(savedId));
                     } catch (Exception e) {
                         System.out.printf("Failed to publish delayed BotMoveRequestedEvent for game {}", savedId, e);
-                        System.out.println();
                     }
                 }, clockStartsAt);
             }

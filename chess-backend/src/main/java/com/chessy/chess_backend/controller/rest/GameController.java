@@ -49,7 +49,6 @@ public class GameController {
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
 
-        System.out.println("pp, userName: " + userName);
         Page<GameDto> games = gameService.getUserGames(userName, pageable);
         return ResponseEntity.ok(games);
     }

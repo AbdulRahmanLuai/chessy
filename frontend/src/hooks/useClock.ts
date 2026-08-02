@@ -35,7 +35,6 @@ export function useClock({ baseRemainingMs, anchorTimestamp, isActive }: UseCloc
 
     if (!isActive || !anchorTimestamp) {
       // Idle color, or no anchor yet: just mirror the server value, no interval.
-      console.log(baseRemainingMs, "!!");
       setDisplayMs(baseRemainingMs);
       return;
     }

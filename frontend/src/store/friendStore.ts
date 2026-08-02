@@ -13,8 +13,6 @@ interface FriendStore {
   error: string | null;
 
   // Bump these whenever server state changes so list-views know to refetch.
-  // TODO: once backend pagination is added, list components should refetch
-  // via these version counters rather than holding full lists in this store.
   incomingRequestsVersion: number;
   outgoingRequestsVersion: number;
   friendsVersion: number;

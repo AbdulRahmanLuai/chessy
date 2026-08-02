@@ -46,7 +46,7 @@ export default function PlayerStrip({
         <div className={styles.playerInfo}>
           <div className={styles.avatarWrapper}>
             <Avatar
-              src={user.avatarUrl}
+              // src={user.avatarUrl}
               username={user.username}
               size="md"
               ring={isActive}
@@ -64,9 +64,9 @@ export default function PlayerStrip({
               {user.username}
             </span>
             <div className={styles.metaRow}>
-              <Badge variant="accent" size="sm">
+              {/* <Badge variant="accent" size="sm">
                 {user.rating}
-              </Badge>
+              </Badge> */}
               {!isConnected && (
                 <Badge variant="warning" size="sm" dot>
                   Disconnected

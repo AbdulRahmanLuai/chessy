@@ -9,17 +9,6 @@ public final class SocketAuthUtil {
     private SocketAuthUtil() {
     }
 
-    public static String extractToken(HandshakeData handshakeData) {
-        Object authToken = handshakeData.getAuthToken();
-        if (authToken instanceof Map<?, ?> authMap) {
-            Object token = authMap.get("token");
-            if (token != null) {
-                return token.toString();
-            }
-        }
-        return null;
-    }
-
     @SuppressWarnings("unchecked")
     public static String extractTokenFromAuthData(Object authData) {
         if (!(authData instanceof Map)) return null;

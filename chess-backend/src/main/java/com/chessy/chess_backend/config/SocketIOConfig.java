@@ -1,6 +1,4 @@
 package com.chessy.chess_backend.config;
-
-import com.chessy.chess_backend.event.auth.SocketAuthenticatedEvent;
 import com.chessy.chess_backend.util.JwtUtil;
 import com.chessy.chess_backend.util.SocketAuthUtil;
 import com.corundumstudio.socketio.AuthTokenResult;
@@ -40,8 +38,6 @@ public class SocketIOConfig {
             UUID userId = jwtUtil.extractUserId(token);
             client.set("userId", userId);
             client.joinRoom("user:" + userId);
-
-            eventPublisher.publishEvent(new SocketAuthenticatedEvent(client, userId));
 
             return AuthTokenResult.AuthTokenResultSuccess;
         });

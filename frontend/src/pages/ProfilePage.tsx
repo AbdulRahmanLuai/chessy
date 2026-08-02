@@ -7,12 +7,12 @@ import { GameHistoryList } from '@/features/profile/GameHistoryList';
 import Spinner from '@/components/ui/Spinner';
 
 export function ProfilePage() {
-  const { userId: routeUserId } = useParams<{ userId: string }>();
+  const { userName: routeUserName } = useParams<{ userName: string }>();
   const { user: currentUser } = useAuth();
-  const userId = routeUserId ?? currentUser?.id ?? '';
+  const userName = routeUserName ?? currentUser?.username ?? '';
 
   const { user, games, stats, isLoading, isLoadingMore, error, hasMore, loadMore } =
-    useProfile(userId);
+    useProfile(userName);
 
   if (isLoading) {
     return <Spinner size="lg" />;
