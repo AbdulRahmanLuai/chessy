@@ -5,9 +5,37 @@ import type { Square, Color, PieceSymbol } from '@/types';
 import styles from './Board.module.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+const BOARD_LIGHT = '#D8E3EA';
+const BOARD_DARK  = '#4A6675';
+import wP from "../../../assets/pieces/wP.svg";
+import wN from "../../../assets/pieces/wN.svg";
+import wB from "../../../assets/pieces/wB.svg";
+import wR from "../../../assets/pieces/wR.svg";
+import wQ from "../../../assets/pieces/wQ.svg";
+import wK from "../../../assets/pieces/wK.svg";
+import bP from "../../../assets/pieces/bP.svg";
+import bN from "../../../assets/pieces/bN.svg";
+import bB from "../../../assets/pieces/bB.svg";
+import bR from "../../../assets/pieces/bR.svg";
+import bQ from "../../../assets/pieces/bQ.svg";
+import bK from "../../../assets/pieces/bK.svg";
 
-const BOARD_LIGHT  = '#F0D9B5';
-const BOARD_DARK   = '#B58863';
+const pieceImages: Record<string, string> = {
+  wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK,
+};
+
+const customPieces = Object.fromEntries(
+  Object.entries(pieceImages).map(([code, img]) => [
+    code,
+    ({ squareWidth }: { squareWidth: number }) => (
+      <img
+        src={img}
+        style={{ width: squareWidth, height: squareWidth }}
+        alt={code}
+      />
+    ),
+  ])
+);
 
 // ─── Highlight styles (JS objects for react-chessboard customSquareStyles) ───
 
@@ -222,6 +250,7 @@ export default function Board({
         // arePiecesDraggable={!disabled}
         customLightSquareStyle={{ backgroundColor: BOARD_LIGHT }}
         customDarkSquareStyle={{ backgroundColor: BOARD_DARK }}
+        customPieces={customPieces}
         customBoardStyle={{
           borderRadius: '4px',
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
