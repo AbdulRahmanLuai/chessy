@@ -44,6 +44,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       accessToken,
       isAuthenticated: true,
       isLoading: false,
+      authInitialized: true,
     }),
 
   logout: () =>
@@ -52,7 +53,6 @@ export const useAuthStore = create<AuthStore>((set) => ({
       accessToken: null,
       isAuthenticated: false,
       isLoading: false,
-      authInitialized: false,
     }),
 }));
 
