@@ -251,6 +251,7 @@ export default function GameRoom({ gameId }: GameRoomProps) {
           player={topPlayer}
           isActive={isOpponentTurn && !isGameOver}
           anchorTimestamp={anchorTimeStamp}
+          isTimed={true}
         />
 
         <div className={styles.boardWrapper}>
@@ -268,6 +269,7 @@ export default function GameRoom({ gameId }: GameRoomProps) {
           player={bottomPlayer}
           isActive={isMyTurn && !isGameOver}
           anchorTimestamp={anchorTimeStamp}
+          isTimed={true}
         />
       </div>
 
