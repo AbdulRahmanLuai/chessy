@@ -11,6 +11,9 @@ let socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
 type SocketReadyCallback = () => void;
 const readyCallbacks: SocketReadyCallback[] = [];
 
+type SocketReconnectCallback = () => void;
+const reconnectCallbacks: SocketReconnectCallback[] = [];
+
 export function connectSocket(token: string) {
   if (socket?.connected) {
     return socket;
@@ -36,6 +39,13 @@ export function connectSocket(token: string) {
     console.warn('Socket disconnected:', reason);
   });
 
+  // Manager-level event: fires only on actual reconnects after a drop,
+  // never on the initial connection.
+  socket.io.on('reconnect', (attempt) => {
+    console.log('Socket reconnected after attempt', attempt);
+    notifySocketReconnect();
+  });
+
   return socket;
 }
 
@@ -47,12 +57,6 @@ export function getSocket() {
   return socket;
 }
 
-/**
- * Subscribe to be notified once the socket is connected and ready.
- * If the socket is already connected, the callback fires immediately (synchronously),
- * so callers don't need to special-case "is it ready already?" themselves.
- * Returns an unsubscribe function for cleanup on unmount.
- */
 export function onSocketReady(callback: SocketReadyCallback): () => void {
   if (socket?.connected) {
     callback();
@@ -63,15 +67,32 @@ export function onSocketReady(callback: SocketReadyCallback): () => void {
   return () => {
     const idx = readyCallbacks.indexOf(callback);
     if (idx !== -1) readyCallbacks.splice(idx, 1);
-  } // this callback returned is called when a component unmounts
-    // , it removes the callback to set up the component's listeners the queue.
+  };
+}
+
+/**
+ * Subscribe to be notified whenever the socket reconnects after a drop
+ * (does NOT fire on the initial connection). Used to trigger re-sync
+ * of application state that may have missed events while disconnected.
+ * Returns an unsubscribe function for cleanup on unmount.
+ */
+export function onSocketReconnect(callback: SocketReconnectCallback): () => void {
+  reconnectCallbacks.push(callback);
+  return () => {
+    const idx = reconnectCallbacks.indexOf(callback);
+    if (idx !== -1) reconnectCallbacks.splice(idx, 1);
+  };
 }
 
 function notifySocketReady() {
-  // Snapshot + clear first, in case a callback subscribes/unsubscribes during iteration 
-  // (don't want to loop over an array of changing size).
   const callbacks = readyCallbacks.splice(0, readyCallbacks.length);
   callbacks.forEach((cb) => cb());
+}
+
+function notifySocketReconnect() {
+  // Not spliced/cleared — reconnects can happen repeatedly over a session,
+  // so subscribers should keep receiving them until they unsubscribe.
+  reconnectCallbacks.forEach((cb) => cb());
 }
 
 export function emitWhenReady<E extends keyof ClientToServerEvents>(
@@ -91,8 +112,10 @@ export function emitWhenReady<E extends keyof ClientToServerEvents>(
 export function disconnectSocket() {
   if (socket) {
     socket.removeAllListeners();
+    socket.io.removeAllListeners();
     socket.disconnect();
     socket = null;
   }
-  readyCallbacks.length = 0; // clear any queued callbacks, since socket is now disconnected
+  readyCallbacks.length = 0;
+  reconnectCallbacks.length = 0;
 }

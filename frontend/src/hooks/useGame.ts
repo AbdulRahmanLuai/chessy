@@ -3,8 +3,9 @@ import { useGameStore } from '@/store/gameStore';
 import { useAuthStore } from '@/store/authStore';
 import { gameSocketService } from '@/socket/gameSocketService';
 import { gameService } from '@/services/game.service';
-import { getSocket, onSocketReady } from '@/socket/socket';
+import { getSocket, onSocketReady, onSocketReconnect } from '@/socket/socket';
 import type { DrawOfferedEvent, GameEndedEvent } from '@/socket/events/game.events';
+
 
 import type {
   Square,
@@ -69,6 +70,30 @@ export function useGame(gameId: string): UseGameReturn {
       setGame(null);
       setDrawOfferReceived(false);
       setDrawOfferSent(false);
+    };
+  }, [gameId, currentUser]);
+
+  // ─── Resync after reconnect ────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    let isActive = true;
+
+    const resync = async () => {
+      console.log('Socket reconnected — resyncing game', gameId);
+      gameSocketService.join(gameId);
+      const latestGame = await gameService.getGame(gameId);
+      if (isActive) {
+        setGame(latestGame);
+      }
+    };
+
+    const unsubscribeReconnect = onSocketReconnect(resync);
+
+    return () => {
+      isActive = false;
+      unsubscribeReconnect();
     };
   }, [gameId, currentUser]);
 
