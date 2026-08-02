@@ -63,5 +63,8 @@ public class ComputerGameEventBroadcaster {
     }
 
     public void broadcastTimeout(UUID gameId, ComputerGameTimedOutException e) {
+        UUID userId = getPlayerId(gameId);
+        sendToPlayer(userId, "computerGame:error", e.getMessage());
+        broadcastGameEnded(e.getEndResult());
     }
 }
