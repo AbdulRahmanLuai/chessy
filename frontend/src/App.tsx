@@ -6,6 +6,8 @@ import { setAccessToken, resetRefreshState } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
 import type { User } from '@/types';
 import { useSocketConnection } from '@/hooks/useSocketConnection';
+import { useClockSyncLifecycle } from '@/hooks/useClockSyncLifecycle';
+
 
 function mapResponseToUser(data: Awaited<ReturnType<typeof authService.refreshToken>>): User {
   return {
@@ -54,6 +56,7 @@ function SilentRefresh() {
 
 export default function App() {
   useSocketConnection();
+  useClockSyncLifecycle();  // TODO: consider mounting this locally only when needed to reduce unessary request traffic 
 
   return (
     <>
