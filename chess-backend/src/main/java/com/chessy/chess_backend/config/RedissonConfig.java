@@ -1,9 +1,11 @@
 package com.chessy.chess_backend.config;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.redisson.Redisson;
+import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.codec.JsonJacksonCodec;
 import org.redisson.config.Config;
@@ -29,5 +31,18 @@ public class RedissonConfig {
 
             return Redisson.create(config);
         }
+    }
+
+    @Bean
+    public RTopic userEventsTopic(RedissonClient redissonClient) {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        mapper.activateDefaultTyping(
+                mapper.getPolymorphicTypeValidator(),
+                ObjectMapper.DefaultTyping.NON_FINAL,
+                JsonTypeInfo.As.PROPERTY
+        );
+        return redissonClient.getTopic("app:user-events", new JsonJacksonCodec(mapper));
     }
 }

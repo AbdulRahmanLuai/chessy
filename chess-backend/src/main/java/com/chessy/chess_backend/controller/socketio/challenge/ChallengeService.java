@@ -1,5 +1,10 @@
 package com.chessy.chess_backend.controller.socketio.challenge;
 
+import com.chessy.chess_backend.controller.socketio.challenge.event.ChallengeEndedEvent;
+import com.chessy.chess_backend.controller.socketio.pubsub.SocketMessagePublisher;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.redisson.api.*;
@@ -11,7 +16,6 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
 
 @Service
 public class ChallengeService {
@@ -33,18 +37,32 @@ public class ChallengeService {
     private final RBlockingQueue<UUID> expiryQueue;
     private final RDelayedQueue<UUID> delayedExpiryQueue;
     private final ExecutorService expiryConsumerExecutor = Executors.newSingleThreadExecutor();
-    private final RTopic challengeEventsTopic;
+    private final SocketMessagePublisher socketMessagePublisher;
 
-    public ChallengeService(RedissonClient redisson) {
+    public ChallengeService(RedissonClient redisson, SocketMessagePublisher socketMessagePublisher) {
         this.redisson = redisson;
-        this.byId = redisson.getMapCache("challenges:byId");
-        this.byChallenger = redisson.getMapCache("challenges:byChallenger");
+
+        ObjectMapper byIdMapper = new ObjectMapper();
+        byIdMapper.registerModule(new JavaTimeModule());
+        byIdMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        // TODO: configure the serialization logic in somewhere else
+
+        this.byId = redisson.getMapCache(
+                "challenges:byId",
+                new TypedJsonJacksonCodec(UUID.class, Challenge.class, byIdMapper)
+        );
+
+        this.byChallenger = redisson.getMapCache(
+                "challenges:byChallenger",
+                new TypedJsonJacksonCodec(UUID.class, UUID.class)
+        );
         this.expiryQueue = redisson.getBlockingQueue(
                 "challenges:expiryQueue",
                 new TypedJsonJacksonCodec(UUID.class)
         );
         this.delayedExpiryQueue = redisson.getDelayedQueue(expiryQueue);
-        this.challengeEventsTopic = redisson.getTopic("challenges:events");
+        this.socketMessagePublisher = socketMessagePublisher;
     }
 
     private RSetCache<UUID> challengedSet(UUID challengedId) {
@@ -62,9 +80,11 @@ public class ChallengeService {
         if (existingId != null) {
             Challenge existing = removeIfPresent(existingId);
             if (existing != null) {
-                challengeEventsTopic.publish(new ChallengeEndedMessage(
-                        existing.getId(), existing.getChallengerId(), existing.getChallengedId(), "overridden"
-                ));
+                socketMessagePublisher.publish(
+                        "challenge:ended",
+                        List.of(existing.getChallengerId(), existing.getChallengedId()),
+                        new ChallengeEndedEvent(existing.getId().toString(), "overridden")
+                );
             }
         }
 
@@ -102,25 +122,28 @@ public class ChallengeService {
             Challenge expired = event.getValue();
             byChallenger.remove(expired.getChallengerId(), expired.getId());
             challengedSet(expired.getChallengedId()).remove(expired.getId());
-            challengeEventsTopic.publish(new ChallengeEndedMessage(
-                    expired.getId(), expired.getChallengerId(), expired.getChallengedId(), "expired"
-            ));
+            socketMessagePublisher.publish(
+                    "challenge:ended",
+                    List.of(expired.getChallengerId(), expired.getChallengedId()),
+                    new ChallengeEndedEvent(expired.getId().toString(), "expired")
+            );
         });
 
         expiryConsumerExecutor.submit(this::consumeExpiries);
     }
 
     // TODO (part C): guard create()'s override-check race with an RLock scoped to challengerId
-    // TODO (part B): replace onExpireCallback with pub/sub publish so any instance can notify
     private void consumeExpiries() {
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 UUID challengeId = expiryQueue.take(); // blocks until an item is ready
                 Challenge expired = removeIfPresent(challengeId);
                 if (expired != null) {
-                    challengeEventsTopic.publish(new ChallengeEndedMessage(
-                            expired.getId(), expired.getChallengerId(), expired.getChallengedId(), "expired"
-                    ));
+                    socketMessagePublisher.publish(
+                            "challenge:ended",
+                            List.of(expired.getChallengerId(), expired.getChallengedId()),
+                            new ChallengeEndedEvent(expired.getId().toString(), "expired")
+                    );
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt(); // restore interrupt flag, exit loop

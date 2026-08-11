@@ -1,5 +1,13 @@
- package com.chessy.chess_backend.controller.socketio.challenge.event;
+package com.chessy.chess_backend.controller.socketio.challenge.event;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
 public class ChallengeSentEvent {
     private String challengeId;
     private String challengedUserId;
@@ -7,20 +15,4 @@ public class ChallengeSentEvent {
     private long expiresAtEpochMs;
     private String toUsername;
     private String toDisplayName; // display name of challenged
-
-    public ChallengeSentEvent(String challengeId, String challengedUserId, String preferredColor, long expiresAtEpochMs, String toUsername, String toDisplayName) {
-        this.challengeId = challengeId;
-        this.challengedUserId = challengedUserId;
-        this.preferredColor = preferredColor;
-        this.expiresAtEpochMs = expiresAtEpochMs;
-        this.toUsername = toUsername;
-        this.toDisplayName = toDisplayName;
-    }
-
-    public String getChallengeId() { return challengeId; }
-    public String getChallengedUserId() { return challengedUserId; }
-    public String getPreferredColor() { return preferredColor; }
-    public long getExpiresAtEpochMs() { return expiresAtEpochMs; }
-    public String getToUsername(){return toUsername;};
-    public String getToDisplayName() {return toDisplayName;}
 }

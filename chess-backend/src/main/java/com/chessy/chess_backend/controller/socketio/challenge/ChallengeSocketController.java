@@ -6,6 +6,7 @@ import com.chessy.chess_backend.controller.socketio.challenge.event.ChallengeRec
 import com.chessy.chess_backend.controller.socketio.challenge.event.ChallengeSentEvent;
 import com.chessy.chess_backend.controller.socketio.challenge.payload.RespondChallengePayload;
 import com.chessy.chess_backend.controller.socketio.challenge.payload.SendChallengePayload;
+import com.chessy.chess_backend.controller.socketio.pubsub.SocketMessagePublisher;
 import com.chessy.chess_backend.dto.onlineGame.CreateGameResponseDto;
 import com.chessy.chess_backend.entity.User;
 import com.chessy.chess_backend.repository.UserRepository;
@@ -14,9 +15,6 @@ import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.corundumstudio.socketio.annotation.OnEvent;
 import jakarta.annotation.PostConstruct;
-import org.redisson.api.RTopic;
-import org.redisson.api.RedissonClient;
-import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -29,22 +27,21 @@ public class ChallengeSocketController {
     private final ChallengeService challengeService;
     private final GameService gameService;
     private final UserRepository userRepository;
-    private final RTopic challengeEventsTopic;
+    private final SocketMessagePublisher socketMessagePublisher;
 
     public ChallengeSocketController(SocketIOServer server, ChallengeService challengeService,
                                      GameService gameService, UserRepository userRepository,
-                                     RedissonClient redisson) {
+                                     SocketMessagePublisher socketMessagePublisher) {
         this.server = server;
         this.challengeService = challengeService;
         this.gameService = gameService;
         this.userRepository = userRepository;
-        this.challengeEventsTopic = redisson.getTopic("challenges:events");
+        this.socketMessagePublisher = socketMessagePublisher;
     }
 
     @PostConstruct
     public void init() {
         server.addListeners(this);
-        challengeEventsTopic.addListener(ChallengeEndedMessage.class, (channel, message) -> notifyEnded(message));
     }
 
 
@@ -87,15 +84,18 @@ public class ChallengeSocketController {
         );
 
         User user = userRepository.findById(challengedId).orElseThrow();
-        server.getRoomOperations("user:" + challengerId).sendEvent("challenge:sent", new ChallengeSentEvent(
-                challenge.getId().toString(),
-                challengedId.toString(),
-                challenge.getPreferredColor(),
-                challenge.getExpiresAt().toEpochMilli(),
-                user.getUsername(),
-                user.getDisplayName()
-
-        ));
+        socketMessagePublisher.publish(
+                "challenge:sent",
+                List.of(challengerId),
+                new ChallengeSentEvent(
+                        challenge.getId().toString(),
+                        challengedId.toString(),
+                        challenge.getPreferredColor(),
+                        challenge.getExpiresAt().toEpochMilli(),
+                        user.getUsername(),
+                        user.getDisplayName()
+                )
+        );
 
         User challenger = userRepository.findById(challengerId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + challengerId));
@@ -107,8 +107,9 @@ public class ChallengeSocketController {
                         ", challengeId=" +
                         challenge.getId()
         );
-        server.getRoomOperations("user:" + challengedId).sendEvent(
+        socketMessagePublisher.publish(
                 "challenge:received",
+                List.of(challengedId),
                 new ChallengeReceivedEvent(
                         challenge.getId().toString(),
                         challengerId.toString(),
@@ -183,17 +184,26 @@ public class ChallengeSocketController {
         String gameId = game.getGameId().toString();
 
         ChallengeAcceptedEvent event = new ChallengeAcceptedEvent(claimed.getId().toString(), gameId);
-        server.getRoomOperations("user:" + claimed.getChallengerId()).sendEvent("challenge:accepted", event);
-        server.getRoomOperations("user:" + claimed.getChallengedId()).sendEvent("challenge:accepted", event);
+        socketMessagePublisher.publish(
+                "challenge:accepted",
+                List.of(claimed.getChallengerId(), claimed.getChallengedId()),
+                event
+        );
 
         // Auto-cancel any other pending challenges either player was part of
         List<Challenge> cancelledForChallenger = challengeService.cancelOutgoingForUser(claimed.getChallengerId());
         List<Challenge> cancelledForChallenged = challengeService.cancelOutgoingForUser(claimed.getChallengedId());
 
-        cancelledForChallenger.forEach(c -> challengeEventsTopic.publish(new ChallengeEndedMessage(
-                c.getId(), c.getChallengerId(), c.getChallengedId(), "cancelled")));
-        cancelledForChallenged.forEach(c -> challengeEventsTopic.publish(new ChallengeEndedMessage(
-                c.getId(), c.getChallengerId(), c.getChallengedId(), "cancelled")));
+        cancelledForChallenger.forEach(c -> socketMessagePublisher.publish(
+                "challenge:ended",
+                List.of(c.getChallengerId(), c.getChallengedId()),
+                new ChallengeEndedEvent(c.getId().toString(), "cancelled")
+        ));
+        cancelledForChallenged.forEach(c -> socketMessagePublisher.publish(
+                "challenge:ended",
+                List.of(c.getChallengerId(), c.getChallengedId()),
+                new ChallengeEndedEvent(c.getId().toString(), "cancelled")
+        ));
     }
 
     @OnEvent("challenge:decline")
@@ -207,8 +217,11 @@ public class ChallengeSocketController {
         if (challenge == null) return;
 
         challengeService.remove(challengeId);
-        challengeEventsTopic.publish(new ChallengeEndedMessage(
-                challenge.getId(), challenge.getChallengerId(), challenge.getChallengedId(), "declined"));
+        socketMessagePublisher.publish(
+                "challenge:ended",
+                List.of(challenge.getChallengerId(), challenge.getChallengedId()),
+                new ChallengeEndedEvent(challenge.getId().toString(), "declined")
+        );
     }
 
     @OnEvent("challenge:cancel")
@@ -227,15 +240,11 @@ public class ChallengeSocketController {
         }
 
         challengeService.remove(challengeId);
-        challengeEventsTopic.publish(new ChallengeEndedMessage(
-                challenge.getId(), challenge.getChallengerId(), challenge.getChallengedId(), "cancelled"));
-    }
-
-    private void notifyEnded(ChallengeEndedMessage message) {
-        System.out.println("notifying challenge ended!");
-        ChallengeEndedEvent event = new ChallengeEndedEvent(message.getChallengeId().toString(), message.getReason());
-        server.getRoomOperations("user:" + message.getChallengerId()).sendEvent("challenge:ended", event);
-        server.getRoomOperations("user:" + message.getChallengedId()).sendEvent("challenge:ended", event);
+        socketMessagePublisher.publish(
+                "challenge:ended",
+                List.of(challenge.getChallengerId(), challenge.getChallengedId()),
+                new ChallengeEndedEvent(challenge.getId().toString(), "cancelled")
+        );
     }
 
     private UUID requireAuth(SocketIOClient client) {
