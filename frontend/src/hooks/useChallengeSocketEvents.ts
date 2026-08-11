@@ -55,6 +55,7 @@ export function useChallengeSocketEvents(): void {
       };
 
       const onChallengeEnded = (payload: ChallengeEndedEvent) => {
+        console.log('Challenge ended:', payload);
         clearOutgoingChallenge();
         removeIncomingChallenge(payload.challengeId);
       };

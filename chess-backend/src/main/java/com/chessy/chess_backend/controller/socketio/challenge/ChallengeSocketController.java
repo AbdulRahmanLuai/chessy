@@ -14,6 +14,8 @@ import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.corundumstudio.socketio.annotation.OnEvent;
 import jakarta.annotation.PostConstruct;
+import org.redisson.api.RTopic;
+import org.redisson.api.RedissonClient;
 import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.stereotype.Component;
 
@@ -27,18 +29,22 @@ public class ChallengeSocketController {
     private final ChallengeService challengeService;
     private final GameService gameService;
     private final UserRepository userRepository;
+    private final RTopic challengeEventsTopic;
 
     public ChallengeSocketController(SocketIOServer server, ChallengeService challengeService,
-                                     GameService gameService, UserRepository userRepository) {
+                                     GameService gameService, UserRepository userRepository,
+                                     RedissonClient redisson) {
         this.server = server;
         this.challengeService = challengeService;
         this.gameService = gameService;
         this.userRepository = userRepository;
+        this.challengeEventsTopic = redisson.getTopic("challenges:events");
     }
 
     @PostConstruct
     public void init() {
         server.addListeners(this);
+        challengeEventsTopic.addListener(ChallengeEndedMessage.class, (channel, message) -> notifyEnded(message));
     }
 
 
@@ -77,9 +83,7 @@ public class ChallengeSocketController {
                 challengedId,
                 payload.getPreferredColor(),
                 payload.getTimeLimitSeconds(),
-                payload.getIncrementSeconds(),
-                (oldChallenge, reason) -> notifyEnded(oldChallenge, reason),
-                (expiredChallenge, reason) -> notifyEnded(expiredChallenge, reason)
+                payload.getIncrementSeconds()
         );
 
         User user = userRepository.findById(challengedId).orElseThrow();
@@ -186,8 +190,10 @@ public class ChallengeSocketController {
         List<Challenge> cancelledForChallenger = challengeService.cancelOutgoingForUser(claimed.getChallengerId());
         List<Challenge> cancelledForChallenged = challengeService.cancelOutgoingForUser(claimed.getChallengedId());
 
-        cancelledForChallenger.forEach(c -> notifyEnded(c, "cancelled"));
-        cancelledForChallenged.forEach(c -> notifyEnded(c, "cancelled"));
+        cancelledForChallenger.forEach(c -> challengeEventsTopic.publish(new ChallengeEndedMessage(
+                c.getId(), c.getChallengerId(), c.getChallengedId(), "cancelled")));
+        cancelledForChallenged.forEach(c -> challengeEventsTopic.publish(new ChallengeEndedMessage(
+                c.getId(), c.getChallengerId(), c.getChallengedId(), "cancelled")));
     }
 
     @OnEvent("challenge:decline")
@@ -201,7 +207,8 @@ public class ChallengeSocketController {
         if (challenge == null) return;
 
         challengeService.remove(challengeId);
-        notifyEnded(challenge, "declined");
+        challengeEventsTopic.publish(new ChallengeEndedMessage(
+                challenge.getId(), challenge.getChallengerId(), challenge.getChallengedId(), "declined"));
     }
 
     @OnEvent("challenge:cancel")
@@ -220,13 +227,15 @@ public class ChallengeSocketController {
         }
 
         challengeService.remove(challengeId);
-        notifyEnded(challenge, "cancelled");
+        challengeEventsTopic.publish(new ChallengeEndedMessage(
+                challenge.getId(), challenge.getChallengerId(), challenge.getChallengedId(), "cancelled"));
     }
 
-    private void notifyEnded(Challenge challenge, String reason) {
-        ChallengeEndedEvent event = new ChallengeEndedEvent(challenge.getId().toString(), reason);
-        server.getRoomOperations("user:" + challenge.getChallengerId()).sendEvent("challenge:ended", event);
-        server.getRoomOperations("user:" + challenge.getChallengedId()).sendEvent("challenge:ended", event);
+    private void notifyEnded(ChallengeEndedMessage message) {
+        System.out.println("notifying challenge ended!");
+        ChallengeEndedEvent event = new ChallengeEndedEvent(message.getChallengeId().toString(), message.getReason());
+        server.getRoomOperations("user:" + message.getChallengerId()).sendEvent("challenge:ended", event);
+        server.getRoomOperations("user:" + message.getChallengedId()).sendEvent("challenge:ended", event);
     }
 
     private UUID requireAuth(SocketIOClient client) {
