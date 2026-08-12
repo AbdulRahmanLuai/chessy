@@ -5,6 +5,9 @@ public class FriendRequestReceivedEvent {
     private String fromUserId;
     private String fromUsername;
 
+    public FriendRequestReceivedEvent() {
+    }
+
     public FriendRequestReceivedEvent(String friendshipId, String fromUserId, String fromUsername) {
         this.friendshipId = friendshipId;
         this.fromUserId = fromUserId;
