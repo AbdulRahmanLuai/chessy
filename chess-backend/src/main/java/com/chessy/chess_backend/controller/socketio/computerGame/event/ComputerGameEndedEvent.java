@@ -1,13 +1,16 @@
 package com.chessy.chess_backend.controller.socketio.computerGame.event;
 
 public class ComputerGameEndedEvent {
-    private final String gameId;
-    private final String result;
-    private final String winner;
-    private final String resultReason;
-    private final String finishedAt;
+    private String gameId;
+    private String result;
+    private String winner;
+    private String resultReason;
+    private String finishedAt;
     private Long whiteTimeRemainingMs;
     private Long blackTimeRemainingMs;
+
+    public ComputerGameEndedEvent() {
+    }
 
     public ComputerGameEndedEvent(String gameId, String result, String winner, String resultReason, String finishedAt, Long whiteTimeRemainingMs, Long blackTimeRemainingMs) {
         this.gameId = gameId;

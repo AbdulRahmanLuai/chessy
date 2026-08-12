@@ -10,6 +10,9 @@ public class ComputerGameMoveAppliedEvent {
     private Long blackTimeRemainingMs;
     private String movedAt;
 
+    public ComputerGameMoveAppliedEvent() {
+    }
+
     public ComputerGameMoveAppliedEvent(String gameId, MoveDetail move, String fen,
                                          Long whiteTimeRemainingMs, Long blackTimeRemainingMs, String movedAt) {
         this.gameId = gameId;
@@ -47,6 +50,9 @@ public class ComputerGameMoveAppliedEvent {
         private String to;
         private String promotion;
         private String san;
+
+        public MoveDetail() {
+        }
 
         public MoveDetail(String from, String to, String promotion, String san) {
             this.from = from;

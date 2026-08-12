@@ -1,24 +1,24 @@
 package com.chessy.chess_backend.controller.socketio.computerGame;
 
 import com.chessy.chess_backend.controller.socketio.computerGame.event.ComputerGameEndedEvent;
+import com.chessy.chess_backend.controller.socketio.pubsub.SocketMessagePublisher;
 import com.chessy.chess_backend.dto.computerGame.ComputerGameDto;
 import com.chessy.chess_backend.dto.computerGame.ComputerGameEndResult;
 import com.chessy.chess_backend.dto.computerGame.ComputerGameMoveResult;
 import com.chessy.chess_backend.exception.ComputerGameTimedOutException;
 import com.chessy.chess_backend.service.ComputerGameService;
-import com.corundumstudio.socketio.SocketIOServer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
 public class ComputerGameEventBroadcaster {
 
-    private final SocketIOServer server;
     private final ComputerGameService computerGameService;
-
+    private final SocketMessagePublisher socketMessagePublisher;
     public UUID getPlayerId(ComputerGameDto game) {
         return game.getUserId();
     }
@@ -28,9 +28,8 @@ public class ComputerGameEventBroadcaster {
     }
 
     public void sendToPlayer(UUID userId, String eventName, Object event) {
-        server.getRoomOperations("user:" + userId.toString()).sendEvent(eventName, event);
+        socketMessagePublisher.publish(eventName, List.of(userId), event);
     }
-
     public ComputerGameEndedEvent toGameEndedEvent(ComputerGameEndResult endResult) {
         return new ComputerGameEndedEvent(
                 endResult.getGameId().toString(),
