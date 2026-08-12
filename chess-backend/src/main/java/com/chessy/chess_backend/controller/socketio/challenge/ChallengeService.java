@@ -31,6 +31,11 @@ public class ChallengeService {
     // silently lose the race to the slower/lazier backstop listener every time.
     private static final long MAP_TTL_SECONDS = TTL_SECONDS + 15;
 
+    // Guards create()'s read-check-write sequence against concurrent create() calls for the
+    // same challenger (e.g. double-click / duplicate emit) racing each other across instances.
+    private static final long LOCK_WAIT_SECONDS = 2;
+    private static final long LOCK_LEASE_SECONDS = 5;
+
     private final RedissonClient redisson;
     private final RMapCache<UUID, Challenge> byId;
     private final RMapCache<UUID, UUID> byChallenger;
@@ -76,27 +81,46 @@ public class ChallengeService {
             throw new IllegalArgumentException("Time limit must be set and more than 0");
         }
 
-        UUID existingId = byChallenger.get(challengerId);
-        if (existingId != null) {
-            Challenge existing = removeIfPresent(existingId);
-            if (existing != null) {
-                socketMessagePublisher.publish(
-                        "challenge:ended",
-                        List.of(existing.getChallengerId(), existing.getChallengedId()),
-                        new ChallengeEndedEvent(existing.getId().toString(), "overridden")
-                );
-            }
+        RLock lock = redisson.getLock("lock:challenger:" + challengerId);
+        boolean acquired;
+        try {
+            acquired = lock.tryLock(LOCK_WAIT_SECONDS, LOCK_LEASE_SECONDS, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrupted while acquiring challenger lock", e);
         }
 
-        Challenge challenge = new Challenge(challengerId, challengedId, preferredColor, timeLimitSeconds, incrementSeconds, TTL_SECONDS);
+        if (!acquired) {
+            throw new RuntimeException("Could not create challenge, please try again");
+        }
 
-        byId.put(challenge.getId(), challenge, MAP_TTL_SECONDS, TimeUnit.SECONDS);
-        byChallenger.put(challengerId, challenge.getId(), MAP_TTL_SECONDS, TimeUnit.SECONDS);
-        challengedSet(challengedId).add(challenge.getId(), MAP_TTL_SECONDS, TimeUnit.SECONDS);
+        try {
+            UUID existingId = byChallenger.get(challengerId);
+            if (existingId != null) {
+                Challenge existing = removeIfPresent(existingId);
+                if (existing != null) {
+                    socketMessagePublisher.publish(
+                            "challenge:ended",
+                            List.of(existing.getChallengerId(), existing.getChallengedId()),
+                            new ChallengeEndedEvent(existing.getId().toString(), "overridden")
+                    );
+                }
+            }
 
-        delayedExpiryQueue.offer(challenge.getId(), TTL_SECONDS, TimeUnit.SECONDS);
+            Challenge challenge = new Challenge(challengerId, challengedId, preferredColor, timeLimitSeconds, incrementSeconds, TTL_SECONDS);
 
-        return challenge;
+            byId.put(challenge.getId(), challenge, MAP_TTL_SECONDS, TimeUnit.SECONDS);
+            byChallenger.put(challengerId, challenge.getId(), MAP_TTL_SECONDS, TimeUnit.SECONDS);
+            challengedSet(challengedId).add(challenge.getId(), MAP_TTL_SECONDS, TimeUnit.SECONDS);
+
+            delayedExpiryQueue.offer(challenge.getId(), TTL_SECONDS, TimeUnit.SECONDS);
+
+            return challenge;
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
     }
 
     public Challenge get(UUID challengeId) {
@@ -132,7 +156,6 @@ public class ChallengeService {
         expiryConsumerExecutor.submit(this::consumeExpiries);
     }
 
-    // TODO (part C): guard create()'s override-check race with an RLock scoped to challengerId
     private void consumeExpiries() {
         while (!Thread.currentThread().isInterrupted()) {
             try {
