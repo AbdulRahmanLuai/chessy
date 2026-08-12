@@ -10,6 +10,9 @@ public class MoveAppliedEvent {
     private long blackTimeRemainingMs;
     private String movedAt;
 
+    public MoveAppliedEvent() {
+    }
+
     public MoveAppliedEvent(String gameId, MoveDetail move, String fen,
                             long whiteTimeRemainingMs, long blackTimeRemainingMs, String movedAt) {
         this.gameId = gameId;
@@ -47,6 +50,9 @@ public class MoveAppliedEvent {
         private String to;
         private String promotion;
         private String san;
+
+        public MoveDetail() {
+        }
 
         public MoveDetail(String from, String to, String promotion, String san) {
             this.from = from;

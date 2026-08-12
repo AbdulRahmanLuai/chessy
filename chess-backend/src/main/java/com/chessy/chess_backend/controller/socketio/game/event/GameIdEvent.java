@@ -3,6 +3,9 @@ package com.chessy.chess_backend.controller.socketio.game.event;
 public class GameIdEvent {
     private String gameId;
 
+    public GameIdEvent() {
+    }
+
     public GameIdEvent(String gameId) {
         this.gameId = gameId;
     }

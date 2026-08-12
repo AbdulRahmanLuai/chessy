@@ -11,6 +11,10 @@ public class GameEndedEvent {
     private Long whiteTimeRemainingMs;
     private Long blackTimeRemainingMs;
     // TODO: add time remaining and configure frontend to show correct time on game end.
+
+    public GameEndedEvent() {
+    }
+
     public GameEndedEvent(String gameId, String result, String winner,  String reason, String finishedAt,
                           Long whiteTimeRemainingMs, Long blackTimeRemainingMs) {
         this.gameId = gameId;

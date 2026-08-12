@@ -4,6 +4,9 @@ public class UserJoinedEvent {
     private String gameId;
     private String userId;
 
+    public UserJoinedEvent() {
+    }
+
     public UserJoinedEvent(String gameId, String userId) {
         this.gameId = gameId;
         this.userId = userId;

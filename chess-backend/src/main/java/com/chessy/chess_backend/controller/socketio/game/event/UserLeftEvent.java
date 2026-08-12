@@ -4,6 +4,9 @@ public class UserLeftEvent {
     private String gameId;
     private String userId;
 
+    public UserLeftEvent() {
+    }
+
     public UserLeftEvent(String gameId, String userId) {
         this.gameId = gameId;
         this.userId = userId;

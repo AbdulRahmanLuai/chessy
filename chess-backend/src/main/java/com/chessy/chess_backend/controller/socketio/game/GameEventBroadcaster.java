@@ -1,22 +1,24 @@
 package com.chessy.chess_backend.controller.socketio.game;
 
 import com.chessy.chess_backend.controller.socketio.game.event.*;
+import com.chessy.chess_backend.controller.socketio.pubsub.SocketMessagePublisher;
 import com.chessy.chess_backend.dto.onlineGame.GameDto;
 import com.chessy.chess_backend.dto.onlineGame.GameEndResult;
 import com.chessy.chess_backend.dto.onlineGame.GameMoveResult;
 import com.chessy.chess_backend.service.GameService;
-import com.corundumstudio.socketio.SocketIOServer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
 public class GameEventBroadcaster {
 
-    private final SocketIOServer server;
     private final GameService gameService;
+    private final SocketMessagePublisher socketMessagePublisher;
+
 
     public record PlayerIds(UUID white, UUID black) {
     }
@@ -30,8 +32,7 @@ public class GameEventBroadcaster {
     }
 
     public void sendToPlayers(PlayerIds players, String eventName, Object event) {
-        server.getRoomOperations("user:" + players.white().toString()).sendEvent(eventName, event);
-        server.getRoomOperations("user:" + players.black().toString()).sendEvent(eventName, event);
+        socketMessagePublisher.publish(eventName, List.of(players.white(), players.black()), event);
     }
 
     public GameEndedEvent toGameEndedEvent(GameEndResult endResult) {

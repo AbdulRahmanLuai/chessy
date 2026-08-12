@@ -5,6 +5,9 @@ public class GameLoadedEvent {
     private long whiteTimeRemainingMs;
     private long blackTimeRemainingMs;
 
+    public GameLoadedEvent() {
+    }
+
     public GameLoadedEvent(String fen, long whiteTimeRemainingMs, long blackTimeRemainingMs) {
         this.fen = fen;
         this.whiteTimeRemainingMs = whiteTimeRemainingMs;
